@@ -8,13 +8,15 @@ DEPS =
 
 OBJ = main.o 
 
+PROD = tcpserver
+
 %.o: %.cpp $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-tcpserver: $(OBJ)
+$(PROD): $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 
 clean:
-	rm -f *.o *~ core 
+	rm -f $(PROD) *.o *~ core 

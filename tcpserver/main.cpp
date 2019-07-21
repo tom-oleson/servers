@@ -28,13 +28,8 @@ int main() {
 	//=============================
 	sockaddr_in hint;
 	hint.sin_family = AF_INET;
-	// host to network short
 	hint.sin_port = htons(54000);
-	// 0.0.0.0 = any ip address
-	if(1 != inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr)) {
-		cerr << "inet_pton() error!" << endl;
-		return -10;
-	}	
+	hint.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if(-1 == bind(host_socket, (sockaddr *) &hint, sizeof(hint))) {
 		cerr << "not able to bind to IP/port!" << endl;
@@ -65,19 +60,21 @@ int main() {
 
 	close(host_socket);
 
+
+	// log connection to console...
 	memset(host, 0, sizeof(host));
 	memset(svc, 0, sizeof(svc));
 
-	if( 0 != getnameinfo( (sockaddr *) &client, sizeof(client),
+	if( 0 == getnameinfo( (sockaddr *) &client, sizeof(client),
 		 host, sizeof(host), svc, sizeof(svc), 0 /*flags*/) ) {
-		
+		cout << "<h> connected on " << host << ":" << svc << endl;
+	}
+	else {
+		// no name info available, use info from client connection...
 		if(NULL != inet_ntop(AF_INET, &client, host, sizeof(host) )) {
 			cout << "<a> connected on " << host <<  ":" <<  ntohs( client.sin_port) << endl;
 		}
-	} else {
-
-		cout << "<h> connected on " << host << ":" << svc << endl;
-	}	
+	} 
 
 	// while message received from client socket; echo message
 	char buf[4096] = "\0";
