@@ -89,7 +89,7 @@ int main() {
 	} 
 
 	// while message received from client socket; echo message
-	char buf[4096] = "\0";
+	char buf[4096] = { "\0" };
 
 	while(true) {
 		memset(buf, 0, sizeof(buf));
