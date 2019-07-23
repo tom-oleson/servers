@@ -16,6 +16,16 @@ using namespace std;
 
 int main() {
 
+	cout <<
+	R"( _)" << endl <<
+	R"(| |_ ___ _ __  ___  ___ _ ____   _____ _ __ )" << endl <<
+	R"(| __/ __| '_ \/ __|/ _ \ '__\ \ / / _ \ '__|)" << endl << 
+	R"(| || (__| |_) \__ \  __/ |   \ V /  __/ |   )" << endl <<
+	R"( \__\___| .__/|___/\___|_|    \_/ \___|_|   )" << endl <<
+	R"(        |_|)" << endl <<
+	"Copyright (C) 2019, Tom Oleson. All rights reserved.\n" <<
+	endl;
+
 	// create socket
 	//============================
 	int host_socket = socket(AF_INET, SOCK_STREAM, 0 /*protocol*/);
