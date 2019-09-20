@@ -43,65 +43,65 @@ void set_non_blocking(int fd) {
 
 int create_listen_socket() {
 
-	// create socket
-	//============================
-	int host_socket = socket(AF_INET, SOCK_STREAM, 0 /*protocol*/);
-	if(-1 == host_socket) {
-		perror("not able to create socket!");
-		exit(EXIT_FAILURE);
-	}
+    // create socket
+    //============================
+    int host_socket = socket(AF_INET, SOCK_STREAM, 0 /*protocol*/);
+    if(-1 == host_socket) {
+        perror("not able to create socket!");
+        exit(EXIT_FAILURE);
+    }
 
-	enable_reuseaddr(host_socket);
+    enable_reuseaddr(host_socket);
 
-	// bind socket to ip and port
-	//=============================
-	sockaddr_in hint;
-	hint.sin_family = AF_INET;
-	hint.sin_port = htons( port );
-	hint.sin_addr.s_addr = htonl(INADDR_ANY);
+    // bind socket to ip and port
+    //=============================
+    sockaddr_in hint;
+    hint.sin_family = AF_INET;
+    hint.sin_port = htons( port );
+    hint.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	if(-1 == bind(host_socket, (sockaddr *) &hint, sizeof(hint))) {
-		perror("not able to bind to IP/port!");
-		exit(EXIT_FAILURE);
-	}
+    if(-1 == bind(host_socket, (sockaddr *) &hint, sizeof(hint))) {
+        perror("not able to bind to IP/port!");
+        exit(EXIT_FAILURE);
+    }
 
-	// mark socket for listening
-	//===============================
-	if(-1 == listen(host_socket, SOMAXCONN)) {
-		perror("not able to listen!");
-		exit(EXIT_FAILURE);
-	}
-	std::cout << "listening on port " << port << "\n";
+    // mark socket for listening
+    //===============================
+    if(-1 == listen(host_socket, SOMAXCONN)) {
+        perror("not able to listen!");
+        exit(EXIT_FAILURE);
+    }
+    std::cout << "listening on port " << port << "\n";
 
-	return host_socket;
+    return host_socket;
 }
 
 int create_epoll_instance() {
-	int epollfd = epoll_create1(0);
+    int epollfd = epoll_create1(0);
     if (epollfd == -1) {
-    	perror("epoll_create1");
-    	exit(EXIT_FAILURE);
+        perror("epoll_create1");
+        exit(EXIT_FAILURE);
     }
     return epollfd;
 }
 
 void add_socket(int epollfd, int fd, uint32_t flags) {
-	struct epoll_event ev;
-	ev.events = flags;
-	ev.data.fd = fd;
-	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
-		perror("epoll_ctl");
-		exit(EXIT_FAILURE);
+    struct epoll_event ev;
+    ev.events = flags;
+    ev.data.fd = fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
     }
 }
 
 void delete_socket(int epollfd, int fd) {
-	struct epoll_event ev;
-	ev.events = 0;
-	ev.data.fd = fd;
-	if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, &ev) == -1) {
-		perror("epoll_ctl");
-		exit(EXIT_FAILURE);
+    struct epoll_event ev;
+    ev.events = 0;
+    ev.data.fd = fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, &ev) == -1) {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -114,8 +114,8 @@ int do_accept(int host_socket) {
     bzero(&client_hint, sizeof(client_hint));
 
     if(-1 == (fd = ::accept(host_socket, (sockaddr *) &client_hint, &client_sz))) {
-    	perror("accept");
-    	exit(EXIT_FAILURE);
+        perror("accept");
+        exit(EXIT_FAILURE);
     }
 
     char host[NI_MAXHOST] = { '\0' };
@@ -140,32 +140,32 @@ int do_accept(int host_socket) {
 
 void do_use(int epollfd, int fd) {
 
-	char buf[1024];
+    char buf[1024];
 
-	while(1) {
-		// read input
-		int num_bytes = read(fd, buf, sizeof(buf));
-		if(num_bytes == -1 && errno == EAGAIN) {
-			return;
-		}
-		if(num_bytes > 0) {
-			buf[num_bytes] = '\0';
-			std::cout << buf;
-		}
-		else if(num_bytes == 0) {
-			
-			// EOF
-			// remove socket from interest list...
-			delete_socket(epollfd, fd);
-			close(fd);
-			std::cout << "<" << fd << ">: connection closed.\n";
-			return;
+    while(1) {
+        // read input
+        int num_bytes = read(fd, buf, sizeof(buf));
+        if(num_bytes == -1 && errno == EAGAIN) {
+            return;
+        }
+        if(num_bytes > 0) {
+            buf[num_bytes] = '\0';
+            std::cout << buf;
+        }
+        else if(num_bytes == 0) {
+            
+            // EOF
+            // remove socket from interest list...
+            delete_socket(epollfd, fd);
+            close(fd);
+            std::cout << "<" << fd << ">: connection closed.\n";
+            return;
 
-		} else if(num_bytes == -1) {
-			perror("do_read");
-			exit(EXIT_FAILURE);
-		}
-	}
+        } else if(num_bytes == -1) {
+            perror("do_read");
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
 main() {
