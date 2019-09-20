@@ -11,9 +11,7 @@
 #include <string.h>
 
 
-
 #define EXIT_FAILURE 1
-
 #define MAX_EVENTS 10
 
 int port = 54000;              
@@ -107,7 +105,6 @@ void delete_socket(int epollfd, int fd) {
     }
 }
 
-
 int do_accept(int host_socket) { 
 
     int fd = -1;
@@ -134,43 +131,11 @@ int do_accept(int host_socket) {
         snprintf(info_buf, sizeof(info_buf), "%s:%d", host, ntohs(client_hint.sin_port));
     }
 
-	set_non_blocking(fd);
+    set_non_blocking(fd);
 
     std::cout << "connection on: " << info_buf << "\n";
 
     return fd;
-}
-
-
-int do_write(int fd, char *buf, size_t sz) {
-
-    // Write until sz bytes have been written (or error/EOF).
-    ssize_t num_bytes, total_bytes = 0;
-    while(total_bytes != sz) {
-        num_bytes = write(fd, buf, sz - total_bytes);
-        if (num_bytes == 0) return total_bytes;     // EOF
-        if (num_bytes == -1) return -1;             // error
-        total_bytes += num_bytes;
-        buf += num_bytes;
-    }
-
-    return total_bytes;
-}
-
-
-int do_read(int fd, char *buf, size_t sz) {
-
-    // Read until sz bytes have been read (or error/EOF).
-    ssize_t num_bytes, total_bytes = 0;
-    while(total_bytes != sz) {
-        num_bytes = read(fd, buf, sz - total_bytes);
-        if (num_bytes == 0) return total_bytes;     // EOF
-        if (num_bytes == -1) return -1;             // error
-        total_bytes += num_bytes;
-        buf += num_bytes;
-    }
-
-    return total_bytes;
 }
 
 void do_use(int epollfd, int fd) {
@@ -205,38 +170,39 @@ void do_use(int epollfd, int fd) {
 
 main() {
 
-	struct epoll_event ev, events[MAX_EVENTS];
-	int conn_sock, nfds, timeout = 60000;
-			
-	int listen_sock = create_listen_socket();
-	int epollfd = create_epoll_instance();
+    struct epoll_event ev, events[MAX_EVENTS];
+    int conn_sock, nfds, timeout = 60000;
 
-	add_socket(epollfd, listen_sock, EPOLLIN);
+    int listen_sock = create_listen_socket();
+    int epollfd = create_epoll_instance();
 
-	while(1) {
+    add_socket(epollfd, listen_sock, EPOLLIN);
 
-		// fetch fds that are ready for I/O...
-		nfds = epoll_wait(epollfd, events, MAX_EVENTS, timeout);
-		if(-1 == nfds) {
-			perror("epoll_wait");
-			exit(EXIT_FAILURE);
-		}
+    while(1) {
 
-		// process the ready fds
-		for(int n = 0; n < nfds; ++n) {
+        // fetch fds that are ready for I/O...
+        nfds = epoll_wait(epollfd, events, MAX_EVENTS, timeout);
+        if(-1 == nfds) {
+            perror("epoll_wait");
+            exit(EXIT_FAILURE);
+        }
 
-			int fd = events[n].data.fd;
+        // process the ready fds
+        for(int n = 0; n < nfds; ++n) {
 
-			if(fd == listen_sock) {
-				conn_sock = do_accept(listen_sock);
-				add_socket(epollfd, conn_sock, EPOLLIN | EPOLLET);
-			}
-			else {
+          int fd = events[n].data.fd;
 
-				do_use(epollfd, fd);
-			}
-		}
-	}
+          if(fd == listen_sock) {
+           conn_sock = do_accept(listen_sock);
+           add_socket(epollfd, conn_sock, EPOLLIN | EPOLLET);
+       }
+       else {
 
-	return 0;
+           do_use(epollfd, fd);
+       }
+   }
 }
+
+    return 0;
+}
+
