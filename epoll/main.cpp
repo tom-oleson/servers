@@ -138,32 +138,38 @@ int do_accept(int host_socket) {
     return fd;
 }
 
-void do_use(int epollfd, int fd) {
-
-    char buf[1024];
+void do_use(int epollfd, int fd, char *buf, size_t sz) {
 
     while(1) {
-        // read input
-        int num_bytes = read(fd, buf, sizeof(buf));
+        
+        int num_bytes = read(fd, buf, sz);
+        
         if(num_bytes == -1 && errno == EAGAIN) {
+            // back to caller for the next epoll_wait()
             return;
         }
-        if(num_bytes > 0) {
-            buf[num_bytes] = '\0';
-            std::cout << buf;
-        }
-        else if(num_bytes == 0) {
-            
-            // EOF
+
+        if(num_bytes == 0) {
+            // EOF - client disconnected
             // remove socket from interest list...
             delete_socket(epollfd, fd);
             close(fd);
+
             std::cout << "<" << fd << ">: connection closed.\n";
             return;
+        }
+        
+        if(num_bytes > 0) {
+            // got some data, add to the output...
+            buf[num_bytes] = '\0';
+            std::cout << buf;
+        }
 
-        } else if(num_bytes == -1) {
-            perror("do_read");
-            exit(EXIT_FAILURE);
+        if(num_bytes == -1) {
+            perror("read");
+            // remove bad connection from interest list...
+            delete_socket(epollfd, fd);
+            close(fd);
         }
     }
 }
@@ -172,6 +178,7 @@ main() {
 
     struct epoll_event ev, events[MAX_EVENTS];
     int conn_sock, nfds, timeout = 60000;
+    char buf[1024];
 
     int listen_sock = create_listen_socket();
     int epollfd = create_epoll_instance();
@@ -198,7 +205,7 @@ main() {
        }
        else {
 
-           do_use(epollfd, fd);
+           do_use(epollfd, fd, buf, sizeof(buf));
        }
    }
 }
