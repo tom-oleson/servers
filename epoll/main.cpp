@@ -176,6 +176,18 @@ void do_use(int epollfd, int fd, char *buf, size_t sz) {
 
 main() {
 
+    /* C/C++ banner */
+    const char *__banner__ =
+    R"(                  _ _)""\n"
+    R"(  ___ _ __   ___ | | |)""\n"
+    R"( / _ \ '_ \ / _ \| | |)""\n"
+    R"(|  __/ |_) | (_) | | |)""\n"
+    R"( \___| .__/ \___/|_|_|)""\n"
+    R"(     |_|)""\n"
+    "Copyright (C) 2019, Tom Oleson. All Rights Reserved.\n";
+    puts(__banner__);
+
+
     struct epoll_event ev, events[MAX_EVENTS];
     int conn_sock, nfds, timeout = 60000;
     char buf[1024];
