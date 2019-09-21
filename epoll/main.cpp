@@ -170,6 +170,7 @@ void do_use(int epollfd, int fd, char *buf, size_t sz) {
             // remove bad connection from interest list...
             delete_socket(epollfd, fd);
             close(fd);
+            return;
         }
     }
 }
@@ -195,11 +196,12 @@ main() {
     int listen_sock = create_listen_socket();
     int epollfd = create_epoll_instance();
 
+    // events on this socket means we have a new connection...
     add_socket(epollfd, listen_sock, EPOLLIN);
 
     while(1) {
 
-        // fetch fds that are ready for I/O...
+        // fetch the ready list (fds that are ready for I/O)
         nfds = epoll_wait(epollfd, events, MAX_EVENTS, timeout);
         if(-1 == nfds) {
             perror("epoll_wait");
@@ -209,19 +211,19 @@ main() {
         // process the ready fds
         for(int n = 0; n < nfds; ++n) {
 
-          int fd = events[n].data.fd;
+            int fd = events[n].data.fd;
 
-          if(fd == listen_sock) {
-           conn_sock = do_accept(listen_sock);
-           add_socket(epollfd, conn_sock, EPOLLIN | EPOLLET);
-       }
-       else {
-
-           do_use(epollfd, fd, buf, sizeof(buf));
-       }
-   }
-}
-
+            if(fd == listen_sock) {
+                // we have a new client connection...
+                conn_sock = do_accept(listen_sock);
+                add_socket(epollfd, conn_sock, EPOLLIN | EPOLLET);
+            }
+            else {
+                // we have new data from a client connection...
+                do_use(epollfd, fd, buf, sizeof(buf));
+            }
+        }
+    }
     return 0;
 }
 
