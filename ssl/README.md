@@ -27,7 +27,10 @@ Example:
 First we create a private key and a certificate
 <pre>$ openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout key.pem -out cert.pem</pre>
 
-Connect to sslecho server using openssl command line tool. Whatever we type after we connect will be echoed to stdout on the server.
+1. Start the sslecho server:
+<pre>$ sslecho 58000</pre>
+
+2. In another terminal, connect to sslecho server using openssl command line tool. Whatever we type after we connect will be echoed to stdout on the server:
 
 <pre>
 openssl s_client -connect localhost:58000 -CAfile ./cert.pem
