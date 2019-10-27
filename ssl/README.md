@@ -16,6 +16,8 @@
 # sslecho
 Demonstrates a simple SSL server
 
+Requires libcm_64.a from project common
+
 <pre>
 usage: sslecho [-v] port
 
