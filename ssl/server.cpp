@@ -43,7 +43,7 @@ void _sleep(int interval) {
 }
 
 
-void server_receive(SSL *ssl, const char *buf, size_t sz) {
+void server_receive(const char *buf, size_t sz) {
     printf("%s", std::string(buf, sz).c_str());
 }
 

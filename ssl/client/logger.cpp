@@ -31,7 +31,7 @@
 
 void sslclient::init_logs() {
 
-    cm_log::console.set_log_level(cm_log::level::trace);
+    cm_log::console.set_log_level(cm_log::level::info);
     //cm_log::console.set_date_time_format("%m/%d/%Y %H:%M:%S");
     //cm_log::console.set_message_format("${date_time} [${lvl}]: ${msg}");
     cm_log::console.set_message_format("${msg}");

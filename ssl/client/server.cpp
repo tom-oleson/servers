@@ -42,21 +42,22 @@ void _delay(int interval) {
     nanosleep(&delay, NULL);    // interruptable
 }
 
-void cat_stdin(SSL *ssl, int interval) {
+void cat_stdin(cm_net::client_thread_ssl *client, int interval) {
     char buf[1024] = {'\0'};
     size_t sz = 0;
     while(!std::cin.eof()) {
         std::cin.getline(buf, sizeof(buf));
         if((sz = std::cin.gcount()) > 0) {
             buf[sz-1] = '\n';
-            if(CM_NET_ERR == cm_net::ssl_write(ssl, buf, sz))
+            int n = client->ssl_write(buf, sz);
+            if(n <= 0)
                 break;
             _delay(interval);
         }
     }
 }
 
-void cat_file(SSL *ssl, int interval, std::string &file_name) {
+void cat_file(cm_net::client_thread_ssl *client, int interval, std::string &file_name) {
 
     std::fstream fs;
     char buf[1024] = {'\0'};
@@ -69,7 +70,8 @@ void cat_file(SSL *ssl, int interval, std::string &file_name) {
             fs.getline(buf, sizeof(buf));
             if((sz = fs.gcount()) > 0) {
                 buf[sz-1] = '\n';
-                if(CM_NET_ERR == cm_net::ssl_write(ssl, buf, sz))
+                int n = client->ssl_write(buf, sz);
+                if(n <= 0)
                     break;
                 _delay(interval);
             }
@@ -78,7 +80,7 @@ void cat_file(SSL *ssl, int interval, std::string &file_name) {
     }
 }
 
-void client_receive(SSL *ssl, const char *buf, size_t sz) {
+void client_receive(const char *buf, size_t sz) {
     printf("%s", std::string(buf, sz).c_str());
 }
 
@@ -89,19 +91,17 @@ void sslclient::run(int keep, int interval, const std::string &host_name, int ho
     _delay(500);
     if(nullptr != client && client->is_connected()) {
 
-        SSL *ssl = client->get_ssl();
-
         // initial delay before we start sending data...
         if(interval > 0) {
             _delay(interval);
         }
 
         if(files.size() == 0) {
-            cat_stdin(ssl, interval);
+            cat_stdin(client, interval);
         }
         else {
             for(auto file_name : files) {
-                cat_file(ssl, interval, file_name);
+                cat_file(client, interval, file_name);
             }
         }
     }
