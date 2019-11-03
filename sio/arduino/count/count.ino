@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2019, Tom Oleson <tom dot oleson at gmail dot com>
  * All rights reserved.
@@ -27,23 +28,51 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SSLCLIENT_H
-#define __SSLCLIENT_H
+#include <EEPROM.h>
 
-#include <exception>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <vector>
+char sID[20] = "#arduino";
 
-#include "log.h"
-#include "util.h"
-#include "logger.h"
-#include "server.h"
+String name;
+unsigned long count = 0;
 
-namespace sslclient {
-
+void read_eeprom() {
+    // if not virgin EEPROM
+    if(EEPROM.read(0x00) != 0xff) {
+        Serial.println(F("Reading EEPROM"));
+        for (int addr = 0; addr < sizeof(sID); addr++) {
+            sID[addr] = EEPROM.read(addr);
+            if(sID[addr] == '\0') break;
+        }
+    }
 }
 
-#endif  // __SSLCLIENT_H
+void update_eeprom() {
+    Serial.println(F("Writing EEPROM"));
+    for (int addr = 0; addr < sizeof(sID); addr++) {
+      EEPROM.update(addr, sID[addr]);
+      // don't reprogram more than we must!
+      if(sID[addr] == '\0') break;
+    }
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LED_BUILTIN, OUTPUT);
+  read_eeprom();
+}
+void loop() {
+  digitalWrite(LED_BUILTIN, HIGH);
+  Serial.print(sID);
+  Serial.print(F(" {count:"));
+  Serial.print(++count);
+  Serial.println(F("}"));
+  if(Serial.available() > 0) {
+    name = Serial.readString();
+    name.trim();
+    name.toCharArray(sID, sizeof(sID));
+    update_eeprom();
+  }
+  delay(500);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(500);
+}

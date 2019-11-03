@@ -1,5 +1,0 @@
-#!/bin/bash
-
-sudo netstat -tp
-sudo netstat -tpl
-
