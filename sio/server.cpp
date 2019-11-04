@@ -44,10 +44,15 @@ void _sleep(int interval) {
 
 
 void server_receive(int fd, const char *buf, size_t sz) {
-    printf("%s", std::string(buf, sz).c_str());
+    
+    std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
+    std::cout.flush();
 }
 
 void sioecho::run(char *host_port) {
+
+    std::ios_base::sync_with_stdio(false); 
+    std::cin.tie(NULL);    
 
     cm_sio::sio_server server(host_port, server_receive);
     while( !server.is_done() ) {

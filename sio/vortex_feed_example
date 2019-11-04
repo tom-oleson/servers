@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sioecho /dev/ttyACM0 | rcat -d50 tom-thinkpad-t4 54000
