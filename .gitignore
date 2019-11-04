@@ -56,3 +56,5 @@ tcpserver
 sslecho
 main
 *.pem
+*.elf
+*.hex

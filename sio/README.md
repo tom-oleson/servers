@@ -4,7 +4,7 @@
    ____/ /    \ \
   / ____/   ___\ \
  / /\    __/   / /
-/ /  \__/  \  / /  SSLECHO
+/ /  \__/  \  / /  SIOECHO
 \ \     \__/  \ \  Copyright (C) 2019, Tom Oleson, All Rights Reserved.
  \ \____   \   \ \ Made in the U.S.A.
   \____ \  /   / /
@@ -26,8 +26,6 @@ usage: sioecho [-v] port
 
 Example:
 
-
-
+<pre>
+$ sioecho /dev/ttyACM
 </pre>
-
-

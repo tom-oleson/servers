@@ -47,4 +47,3 @@ clean:
 	-@rm -f ./$(SKETCH)/*.hex
 	-@rm -f ./$(SKETCH)/*.elf
 	@echo "$(@)ed"
-
