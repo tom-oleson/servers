@@ -13,7 +13,7 @@
 
 </pre>
 
-# sslecho
+# sioecho
 Demonstrates a simple serial monitor
 
 Requires libcm_64.a from project common
