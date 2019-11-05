@@ -31,7 +31,8 @@
 PORT = /dev/ttyACM0
 BOARD = arduino:avr:uno
 
-SKETCH = count
+sketch ?= count
+SKETCH ?= $(sketch)
 
 all: clean build
 
