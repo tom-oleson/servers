@@ -36,7 +36,7 @@
 
 namespace sioecho {
 
-void run(char *port);
+void run(const std::vector<std::string> &ports);
 
 }
 

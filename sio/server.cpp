@@ -49,12 +49,13 @@ void server_receive(int fd, const char *buf, size_t sz) {
     std::cout.flush();
 }
 
-void sioecho::run(char *host_port) {
+void sioecho::run(const std::vector<std::string> &ports) {
 
+    // make stdio work with pipes
     std::ios_base::sync_with_stdio(false); 
     std::cin.tie(NULL);    
 
-    cm_sio::sio_server server(host_port, server_receive);
+    cm_sio::sio_server server(ports, server_receive);
     while( !server.is_done() ) {
         _sleep(1000);
     }

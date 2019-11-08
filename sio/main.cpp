@@ -88,11 +88,13 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    if(optind < argc) {
-        port = argv[optind++];
+    std::vector<std::string> ports;
+    while(optind < argc) {
+        ports.push_back(argv[optind++]);
     }
 
-    sioecho::run(port);
+
+    sioecho::run(ports);
 
     return 0;
 }
