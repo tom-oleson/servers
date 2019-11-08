@@ -3,4 +3,5 @@
 # run time.ino on arduino
 # run sioecho /dev/ttyACM0 on this host (opens and conditions the port)
 # run this script to set the time
-echo T$(date +%s) > /dev/ttyACM0
+# $ set_arduino_time /dev/ttyACM0
+echo T$(date +%s) > $1
