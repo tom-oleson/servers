@@ -44,8 +44,9 @@ R"(       \ \/___/ /)""\n"
 R"(        \______/)""\n";
 
 void usage(int argc, char *argv[]) {
-    puts("usage: sioecho [-v] port");
+    puts("usage: sioecho [-c host:port] [-v] port");
     puts("");
+    puts("-c host:port  Host name and port");
     puts("-v            Output version/build info to console");
     puts("");
 }
@@ -59,13 +60,24 @@ int main(int argc, char *argv[]) {
     int opt;
     bool version = false;
     char *port = nullptr;
+    std::string host_name = "localhost";
+    int host_port = -1;
+    std::vector<std::string> v;
 
-    while((opt = getopt(argc, argv, "v")) != -1) {
+    while((opt = getopt(argc, argv, "c:v")) != -1) {
         switch(opt) {
 
             case 'v':
                 version = true;
                 break;
+
+            case 'c':
+                v = cm_util::split(optarg, ':');
+                if(v.size() == 2) {
+                    host_name = v[0];
+                    host_port = atoi(v[1].c_str());
+                }
+                break;                
 
             case 'h':
             default:
@@ -75,6 +87,7 @@ int main(int argc, char *argv[]) {
     }
 
     sioecho::init_logs();
+
 
     if(version) {
         puts(__banner__);
@@ -94,7 +107,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    sioecho::run(ports);
+    sioecho::run(ports, host_name, host_port);
 
     return 0;
 }

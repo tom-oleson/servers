@@ -29,7 +29,7 @@
 
 #include "server.h"
 
-void _sleep(int interval) {
+void _sleep(int interval /* ms */) {
 
     // allow other threads to do some work
     long n = 1000000;
@@ -42,21 +42,72 @@ void _sleep(int interval) {
     nanosleep(&delay, NULL);    // interruptable
 }
 
+cm_net::client_thread *client = nullptr;
+bool connected = false;
 
 void server_receive(int fd, const char *buf, size_t sz) {
-    
-    std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
-    std::cout.flush();
+
+    if(nullptr != client) {
+        if(client->is_connected()) {
+            cm_net::send(client->get_socket(), std::string(buf, sz));
+        }
+        else {
+            // data not delivered
+            // to-do: add send queue
+        }
+    }
+    else {
+        std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
+        std::cout.flush();
+    }
 }
 
-void sioecho::run(const std::vector<std::string> &ports) {
+void client_receive(int socket, const char *buf, size_t sz) {
+    // do nothing, we are in a read-only context for sio ports
+}
+
+void sioecho::run(const std::vector<std::string> &ports, const std::string &host_name, int host_port) {
 
     // make stdio work with pipes
     std::ios_base::sync_with_stdio(false); 
-    std::cin.tie(NULL);    
+    std::cin.tie(NULL);
+
+    if(host_port != -1) {
+        cm_log::info(cm_util::format("remote server: %s:%d", host_name.c_str(), host_port));
+    }
+
+    bool connected = false;     // client connected to remote server
+    time_t next_connect_time = 0;
 
     cm_sio::sio_server server(ports, server_receive);
     while( !server.is_done() ) {
         _sleep(1000);
+
+        if(host_port != -1) {
+            if(nullptr == client) {
+                client = new cm_net::client_thread(host_name, host_port, client_receive); 
+                next_connect_time = cm_time::clock_seconds() + 60;
+            }
+
+            // if client thread is running, we are connected
+            if(nullptr != client && client->is_connected()) {
+                if(!connected) {
+                    connected = true;
+                }
+            }    
+
+            // if client thread is NOT running, we are NOT connected
+            if(nullptr != client && !client->is_connected()) {
+                if(connected) {
+                    connected = false;
+                }
+
+                if(cm_time::clock_seconds() > next_connect_time) {
+                    // attempt reconnect
+                    client->start();
+                    next_connect_time = cm_time::clock_seconds() + 60;
+                }
+            }
+        }                
     }
 }

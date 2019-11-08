@@ -33,10 +33,11 @@
 #include <vector>
 #include "log.h"
 #include "serial.h"
+#include "network.h"
 
 namespace sioecho {
 
-void run(const std::vector<std::string> &ports);
+void run(const std::vector<std::string> &ports, const std::string &host_name, int host_port);
 
 }
 
