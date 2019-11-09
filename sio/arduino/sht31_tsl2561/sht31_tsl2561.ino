@@ -180,12 +180,12 @@ void loop() {
       Serial.print(event.light);
 
       uint16_t broadband;
-      uint15_t ir;
+      uint16_t ir;
       tsl.getLuminosity(&broadband, &ir);
 
       output_field_seperator();
 
-      Serial.print(F("broadband_lum":));
+      Serial.print(F("broadband_lum:"));
       Serial.print(broadband);
 
       output_field_seperator();
