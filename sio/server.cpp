@@ -44,6 +44,7 @@ void _sleep(int interval /* ms */) {
 
 cm_net::client_thread *client = nullptr;
 bool connected = false;
+int host_port = -1;
 
 void server_receive(int fd, const char *buf, size_t sz) {
 
@@ -56,7 +57,7 @@ void server_receive(int fd, const char *buf, size_t sz) {
             // to-do: add send queue
         }
     }
-    else {
+    else if(-1 == host_port) {
         std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
         std::cout.flush();
     }
@@ -66,13 +67,14 @@ void client_receive(int socket, const char *buf, size_t sz) {
     // do nothing, we are in a read-only context for sio ports
 }
 
-void sioecho::run(const std::vector<std::string> &ports, const std::string &host_name, int host_port) {
+void sioecho::run(const std::vector<std::string> &ports, const std::string &host_name, int _host_port) {
 
     // make stdio work with pipes
     std::ios_base::sync_with_stdio(false); 
     std::cin.tie(NULL);
 
-    if(host_port != -1) {
+    if(_host_port != -1) {
+	host_port = _host_port;
         cm_log::info(cm_util::format("remote server: %s:%d", host_name.c_str(), host_port));
     }
 

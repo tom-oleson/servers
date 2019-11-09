@@ -1,0 +1,9 @@
+#!/bin/bash
+# this example sends data for two sio devices to vortex
+sioecho -c tom-thinkpad-t4:54000 /dev/ttyACM0 /dev/ttyACM1
+
+sleep 6
+
+#update the time on each device
+echo T$(date +%s) > /dev/ttyACM0 &
+echo T$(date +%s) > /dev/ttyACM1 &
