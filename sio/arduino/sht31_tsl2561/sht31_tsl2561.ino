@@ -168,24 +168,20 @@ void loop() {
     }
 
     if(tsl_found) {
-      sensors_event_t event;
-      tsl.getEvent(&event);
 
       //If event.light = 0 lux the sensor is probably saturated
       //and no reliable data could be generated!
 
-      if(append) output_field_seperator();
-
-      Serial.print(F("lux:"));
-      Serial.print(event.light);
+      sensors_event_t event;
+      tsl.getEvent(&event);
 
       uint16_t broadband;
       uint16_t ir;
       tsl.getLuminosity(&broadband, &ir);
 
-      output_field_seperator();
+      if(append) output_field_seperator();
 
-      Serial.print(F("broadband_lum:"));
+      Serial.print(F("bb_lum:"));
       Serial.print(broadband);
 
       output_field_seperator();
@@ -193,6 +189,10 @@ void loop() {
       Serial.print(F("ir_lum:"));
       Serial.print(ir);
 
+      output_field_seperator();
+
+      Serial.print(F("lux:"));
+      Serial.print(event.light);
     }
 
     Serial.println(F("}"));
