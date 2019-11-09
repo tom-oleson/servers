@@ -1,0 +1,5 @@
+#!/bin/bash
+
+#update the interval (seconds) on each device
+echo I10 > /dev/ttyACM0 &
+echo I10 > /dev/ttyACM1 &
