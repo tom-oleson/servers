@@ -28,8 +28,11 @@
 #
 #
 
-PORT = /dev/ttyACM0
-BOARD = arduino:avr:uno
+port ?= /dev/ttyACM0
+PORT ?= $(port)
+
+board ?= arduino:avr:uno
+BOARD ?= $(board)	
 
 sketch ?= count
 SKETCH ?= $(sketch)
