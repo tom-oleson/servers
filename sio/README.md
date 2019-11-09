@@ -27,5 +27,5 @@ usage: sioecho [-v] port
 Example:
 
 <pre>
-$ sioecho /dev/ttyACM
+$ sioecho /dev/ttyACM0
 </pre>
