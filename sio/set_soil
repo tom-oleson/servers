@@ -1,0 +1,5 @@
+#!/bin/bash
+
+#enable soil moisture on devices
+#echo +A0 > /dev/ttyACM0 &
+echo +A0 > /dev/ttyACM1 &

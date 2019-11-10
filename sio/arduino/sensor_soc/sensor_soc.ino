@@ -39,19 +39,26 @@
 
 char sID[20] = "#arduino";
 
+int soil_pin = 0;
 Adafruit_SHT31 sht31 = Adafruit_SHT31();
 Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
 
 String input;
 volatile unsigned long count = 0;
 
-bool sht31_found = false;
 float temperature = 0;
 float humidity = 0;
+int soil_moisture = 0;
 
 volatile int interval = 1;
 
+bool sht31_found = false;
 bool tsl_found = false;
+volatile bool soil_found = false;
+
+void init_soil() {
+  soil_found = false;
+}
 
 void init_sht31() {
 
@@ -124,6 +131,7 @@ void setup() {
     digitalWrite(LED_BUILTIN, LOW);
 
     read_eeprom();
+    init_soil();
     init_sht31();
     init_tsl2561();
 }
@@ -199,6 +207,17 @@ void loop() {
 
       Serial.print(F(JS("lux")":"));
       Serial.print(event.light);
+      append = true;
+    }
+
+    if(soil_found) {
+      soil_moisture = map(analogRead(soil_pin), 0, 3505, 100, 0);
+
+      if(append) output_field_seperator();
+
+      Serial.print(F(JS("soil")":"));
+      Serial.print(soil_moisture);
+      append = true;
     }
 
     Serial.println(F("}"));
@@ -218,6 +237,9 @@ void loop() {
       else if(input[0] == 'N') {
         input.substring(1).toCharArray(sID, sizeof(sID));
         update_eeprom();
+      }
+      else if(input[0] == '+' && input[1] == 'A' && input[2] == '0') {
+        soil_found = true;
       }
     }
         
