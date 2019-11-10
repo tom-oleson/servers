@@ -35,6 +35,8 @@
 #include <Adafruit_TSL2561_U.h>
 #include <EEPROM.h>
 
+#define JS(s) "" #s ""
+
 char sID[20] = "#arduino";
 
 Adafruit_SHT31 sht31 = Adafruit_SHT31();
@@ -130,6 +132,10 @@ void output_field_seperator() {
   Serial.print(F(","));
 }
 
+void output_value_seperator() {
+  Serial.print(F(":"));
+}
+
 void loop() {
   
     ////////////////// serial outputs///////////////
@@ -142,7 +148,7 @@ void loop() {
     Serial.print(F(" {"));
 
     if(count > 0) {
-      Serial.print(F("time:"));
+      Serial.print(F(JS("time")":"));
       Serial.print(count);
       append = true;
     }
@@ -154,14 +160,14 @@ void loop() {
 
       if(append) output_field_seperator();
       
-      Serial.print(F("temperature:"));
-      if(isnan(temperature)) { Serial.print(F("NaN")); }
+      Serial.print(F(JS("temp")":"));
+      if(isnan(temperature)) { Serial.print(F(JS("NaN"))); }
       else { Serial.print(temperature); }
 
       output_field_seperator();
 
-      Serial.print(F("humidity:"));
-      if(isnan(humidity)) { Serial.print(F("NaN")); }
+      Serial.print(F(JS("hum")":"));
+      if(isnan(humidity)) { Serial.print(F(JS("NaN"))); }
       else { Serial.print(humidity); }
       append = true;
 
@@ -181,17 +187,17 @@ void loop() {
 
       if(append) output_field_seperator();
 
-      Serial.print(F("bb_lum:"));
+      Serial.print(F(JS("bb_lum")":"));
       Serial.print(broadband);
 
       output_field_seperator();
 
-      Serial.print(F("ir_lum:"));
+      Serial.print(F(JS("ir_lum")":"));
       Serial.print(ir);
 
       output_field_seperator();
 
-      Serial.print(F("lux:"));
+      Serial.print(F(JS("lux")":"));
       Serial.print(event.light);
     }
 
@@ -215,5 +221,5 @@ void loop() {
       }
     }
         
-    delay(943);
+    delay(963);
 }
