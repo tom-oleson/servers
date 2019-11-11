@@ -35,6 +35,8 @@
 #include <Adafruit_TSL2561_U.h>
 #include <EEPROM.h>
 
+#define DS18B20
+
 #define JS(s) "" #s ""
 
 char sID[20] = "#arduino";
@@ -48,13 +50,54 @@ volatile unsigned long count = 0;
 
 float temperature = 0;
 float humidity = 0;
+uint16_t lux = 0;
+uint16_t bb_lum = 0;
+uint16_t ir_lum = 0;;
 int soil_moisture = 0;
+float ds_temperature = 0;
 
 volatile int interval = 1;
 
 bool sht31_found = false;
 bool tsl_found = false;
 volatile bool soil_found = false;
+
+#ifdef DS18B20
+
+#include <OneWire.h>              // for digital temp probe
+#include <DallasTemperature.h>    // for digitial temp probe
+
+#define ONE_WIRE_BUS    2
+
+DeviceAddress thermometer_address;  // holds 64 bit device address
+OneWire one_wire(ONE_WIRE_BUS);        
+DallasTemperature temp_sensor(&one_wire);  
+
+bool ds18b20_found = false;
+void init_ds18b20() {
+  temp_sensor.begin();
+  ds18b20_found = temp_sensor.getAddress(thermometer_address, 0);
+
+  if(ds18b20_found) {
+
+    // set resolution bits (9-12)
+    temp_sensor.setResolution(thermometer_address, 11);
+
+    // print device address
+    Serial.print(F("DS1820B device address:"));
+    for (uint8_t i = 0; i < 8; i++) {
+      if (thermometer_address[i] < 16) Serial.print(F("0"));
+        Serial.print(thermometer_address[i], HEX);
+    }        
+    
+    Serial.println();
+  }
+  else {
+    Serial.println(F("No DS1820B sensor found"));
+  }
+
+}
+#endif
 
 void init_soil() {
   soil_found = false;
@@ -64,7 +107,7 @@ void init_sht31() {
 
     sht31_found = sht31.begin(0x44);
     if(!sht31_found) {
-      Serial.println("No SHT31 sensor found");
+      Serial.println(F("No SHT31 sensor found"));
     }  
 }
 
@@ -72,7 +115,7 @@ void init_tsl2561() {
   
     tsl_found = tsl.begin();
     if(!tsl_found) {
-      Serial.println("No TSL2516 sensor found");
+      Serial.println(F("No TSL2516 sensor found"));
     }
     else {
 
@@ -134,6 +177,10 @@ void setup() {
     init_soil();
     init_sht31();
     init_tsl2561();
+
+    #ifdef DS18B20    
+    init_ds18b20();
+    #endif    
 }
 
 void output_field_seperator() {
@@ -145,6 +192,39 @@ void output_value_seperator() {
 }
 
 void loop() {
+
+    /////////////////// sensor reads ////////////////
+
+    if(sht31_found) {
+
+      temperature = sht31.readTemperature();
+      humidity = sht31.readHumidity();
+
+    }
+
+    if(tsl_found) {
+
+      //If event.light = 0 lux the sensor is probably saturated
+      //and no reliable data could be generated!
+      sensors_event_t event;
+      tsl.getEvent(&event);
+      lux = event.light;
+
+      tsl.getLuminosity(&bb_lum, &ir_lum);
+    }
+
+    if(soil_found) {
+      soil_moisture = map(analogRead(soil_pin), 0, 3505, 100, 0);
+    }
+
+#ifdef DS18B20
+    if(ds18b20_found) {
+
+      temp_sensor.requestTemperatures();
+      ds_temperature = temp_sensor.getTempC(thermometer_address);
+
+    }
+#endif
   
     ////////////////// serial outputs///////////////
 
@@ -163,9 +243,6 @@ void loop() {
 
     if(sht31_found) {
 
-      temperature = sht31.readTemperature();
-      humidity = sht31.readHumidity();
-
       if(append) output_field_seperator();
       
       Serial.print(F(JS("temp")":"));
@@ -178,40 +255,28 @@ void loop() {
       if(isnan(humidity)) { Serial.print(F(JS("NaN"))); }
       else { Serial.print(humidity); }
       append = true;
-
     }
 
     if(tsl_found) {
 
-      //If event.light = 0 lux the sensor is probably saturated
-      //and no reliable data could be generated!
-
-      sensors_event_t event;
-      tsl.getEvent(&event);
-
-      uint16_t broadband;
-      uint16_t ir;
-      tsl.getLuminosity(&broadband, &ir);
-
       if(append) output_field_seperator();
 
       Serial.print(F(JS("bb_lum")":"));
-      Serial.print(broadband);
+      Serial.print(bb_lum);
 
       output_field_seperator();
 
       Serial.print(F(JS("ir_lum")":"));
-      Serial.print(ir);
+      Serial.print(ir_lum);
 
       output_field_seperator();
 
       Serial.print(F(JS("lux")":"));
-      Serial.print(event.light);
+      Serial.print(lux);
       append = true;
     }
 
     if(soil_found) {
-      soil_moisture = map(analogRead(soil_pin), 0, 3505, 100, 0);
 
       if(append) output_field_seperator();
 
@@ -219,6 +284,17 @@ void loop() {
       Serial.print(soil_moisture);
       append = true;
     }
+
+#ifdef DS18B20
+    if(ds18b20_found) {
+    
+      if(append) output_field_seperator();
+
+      Serial.print(F(JS("ds_temp")":"));
+      Serial.print(ds_temperature);
+      append = true;
+    }
+#endif
 
     Serial.println(F("}"));
 
@@ -243,5 +319,5 @@ void loop() {
       }
     }
         
-    delay(963);
+    delay(943);
 }

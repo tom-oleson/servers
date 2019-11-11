@@ -54,6 +54,7 @@ dkms.conf
 #project output executable
 tcpserver
 sslecho
+*sioecho/sioecho
 main
 *.pem
 *.elf
