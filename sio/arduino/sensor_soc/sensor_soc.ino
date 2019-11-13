@@ -1,4 +1,3 @@
-
 /*
    Copyright (c) 2019, Tom Oleson <tom dot oleson at gmail dot com>
    All rights reserved.
