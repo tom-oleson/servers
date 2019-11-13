@@ -1,27 +1,5 @@
 #!/bin/bash
 
-# connect arduino003 on wifi to vortex (direct)
-#echo C192.168.1.22:54000 > /dev/ttyUSB0
-
 # echo arduino001 and arduino002 serial to vortex
 sioecho -c tom-thinkpad-t4:54000 /dev/ttyACM0 /dev/ttyACM1
-
-
-#update the time on each device
-echo T$(date +%s) > /dev/ttyACM0 &
-echo T$(date +%s) > /dev/ttyACM1 &
-echo T$(date +%s) > /dev/ttyUSB0 &
-
-sleep 5
-
-#set interval to 10 seconds on each device
-echo I10 > /dev/ttyACM0 &
-echo I10 > /dev/ttyACM1 &
-echo I10 > /dev/ttyUSB0 &
-
-
-sleep 5
-
-#enable soil sensor on arduino002
-echo +A0 > /dev/ttyACM1 &
 

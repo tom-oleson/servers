@@ -437,7 +437,7 @@ bool set_ssid_and_password(char *buf, size_t sz) {
 void process_config_input(String &str) {
 
   if (str[0] == 'T') {
-    // epoc time
+    // epoch time
     // T1573615730
     count = str.substring(1).toInt() + 3;
   }
