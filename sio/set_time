@@ -3,3 +3,5 @@
 #update the time on each device
 echo T$(date +%s) > /dev/ttyACM0 &
 echo T$(date +%s) > /dev/ttyACM1 &
+echo T$(date +%s) > /dev/ttyUSB0 &
+

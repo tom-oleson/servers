@@ -3,3 +3,4 @@
 #update the interval (seconds) on each device
 echo I10 > /dev/ttyACM0 &
 echo I10 > /dev/ttyACM1 &
+echo I10 > /dev/ttyUSB0 &

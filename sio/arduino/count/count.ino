@@ -49,7 +49,8 @@ void read_eeprom() {
 void update_eeprom() {
     Serial.println(F("Writing EEPROM"));
     for (int addr = 0; addr < sizeof(sID); addr++) {
-      EEPROM.update(addr, sID[addr]);
+      if(EEPROM.read(addr) != sID[addr])
+	EEPROM.write(addr, sID[addr]);
       // don't reprogram more than we must!
       if(sID[addr] == '\0') break;
     }
@@ -57,11 +58,11 @@ void update_eeprom() {
 
 void setup() {
   Serial.begin(9600);
-  pinMode(LED_BUILTIN, OUTPUT);
+  //pinMode(LED_BUILTIN, OUTPUT);
   read_eeprom();
 }
 void loop() {
-  digitalWrite(LED_BUILTIN, HIGH);
+  //digitalWrite(LED_BUILTIN, HIGH);
   Serial.print(sID);
   Serial.print(F(" {count:"));
   Serial.print(++count);
@@ -73,6 +74,6 @@ void loop() {
     update_eeprom();
   }
   delay(500);
-  digitalWrite(LED_BUILTIN, LOW);
+  //digitalWrite(LED_BUILTIN, LOW);
   delay(500);
 }
