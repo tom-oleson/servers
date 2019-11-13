@@ -1,7 +1,7 @@
 
 
 
-#sensor_soc API
+## sensor_soc API
 
 <pre>
 
@@ -10,6 +10,7 @@ Inumber			/* interval: set output interval (seconds) */
 Tnumber			/* time: set epoc time */
 Wstring:string		/* wifi: set SSID:password */
 Cstring:number		/* wifi: set server IP:port */
+</pre>
 
 Examples:
 
