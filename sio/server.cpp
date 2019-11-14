@@ -29,6 +29,10 @@
 
 #include "server.h"
 
+cm_net::client_thread *client = nullptr;
+bool connected = false;
+int host_port = -1;
+
 void _sleep(int interval /* ms */) {
 
     // allow other threads to do some work
@@ -42,15 +46,47 @@ void _sleep(int interval /* ms */) {
     nanosleep(&delay, NULL);    // interruptable
 }
 
-cm_net::client_thread *client = nullptr;
-bool connected = false;
-int host_port = -1;
+cm::mutex rx_mutex;
+cm::cond rx_response;
+bool rx_received = false;
+const char *rx_buffer = nullptr;
+size_t rx_len = 0;
 
 void server_receive(int fd, const char *buf, size_t sz) {
 
     if(nullptr != client) {
         if(client->is_connected()) {
             cm_net::send(client->get_socket(), std::string(buf, sz));
+
+            rx_mutex.lock();
+
+            timespec now;
+            clock_gettime(CLOCK_REALTIME, &now);
+            time_t timeout = cm_time::millis(now) + 100;   // 100ms
+
+            rx_received = false;
+
+            while(!rx_received) {
+
+                // unlocks mutex, then sleeps
+                // on wakeup signal, locks mutex again
+                timespec ts = {0, 10000000};   // 10 ms
+                rx_response.timed_wait(rx_mutex, ts);
+
+                // see if we've timed out waiting for response                
+                clock_gettime(CLOCK_REALTIME, &now);
+                if(cm_time::millis(now) > timeout) {
+                    rx_mutex.unlock();
+                    rx_response.broadcast();
+                    return;
+                }
+            }
+
+            // send received data to serial fd
+            if(rx_len > 0) cm_sio::sio_write(fd, rx_buffer, rx_len);
+
+            rx_mutex.unlock();
+            rx_response.signal();
         }
         else {
             // data not delivered
@@ -64,7 +100,16 @@ void server_receive(int fd, const char *buf, size_t sz) {
 }
 
 void client_receive(int socket, const char *buf, size_t sz) {
-    // do nothing, we are in a read-only context for sio ports
+    
+    rx_mutex.lock();
+
+    rx_buffer = buf;
+    rx_len = sz;
+    rx_received = true;
+    
+    rx_mutex.unlock();
+
+    rx_response.signal();   // wake up waiting thread
 }
 
 void sioecho::run(const std::vector<std::string> &ports, const std::string &host_name, int _host_port) {
