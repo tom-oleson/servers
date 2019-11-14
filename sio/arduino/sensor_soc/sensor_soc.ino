@@ -214,6 +214,30 @@ void wifi_close_connection() {
   wifi_out = false;
 }
 
+void check_wifi_connection() {
+
+  // if no wifi, re-initialize
+  if(WiFi.status() != WL_CONNECTED) {
+    wifi_close_connection();
+    init_wifi();
+    return;
+  }
+   
+  // ESP32 API fails to expose the reconnect method in WiFiClient! WTF?!!
+  // if we lost server connection, attempt reconnect
+  for(int timeout = 6; !client.connected() && timeout > 0; timeout--) {
+    if(client.connect(eeprom_data.server_address, eeprom_data.server_port)) return;
+    delay(10000);
+  }
+
+  // if we are not connected to the server now, re-initialize
+  if(!client.connected()) {
+    wifi_close_connection();
+    init_wifi();
+    return;
+  }
+}
+
 void init_wifi() {
 
 retry:
@@ -532,6 +556,8 @@ void loop() {
   ////////////////// data outputs ///////////////
 
   if ((++count % interval) == 0) {
+
+    if(wifi_out) check_wifi_connection();
 
     con_print(eeprom_data.sID);
 
