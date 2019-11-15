@@ -52,6 +52,7 @@ bool rx_received = false;
 const char *rx_buffer = nullptr;
 size_t rx_len = 0;
 
+// sio_server receive data from sio client
 void server_receive(int fd, const char *buf, size_t sz) {
 
     if(nullptr != client) {

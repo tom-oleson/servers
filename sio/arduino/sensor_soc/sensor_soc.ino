@@ -37,7 +37,7 @@
 #define ESP32
 #define DS18B20
 
-#define DEVICE_PREFIX "ETOK"
+#define DEVICE_PREFIX "eTOK"
 #define JS(s) "" #s ""
 
 struct __eeprom_data {
@@ -81,6 +81,7 @@ volatile bool soil_found = false;
 
 /////////////////// output targets //////////////////////////
 
+#ifdef ESP32
 struct cm_buffer {
 
   size_t len;             /* bytes written to buffer */
@@ -101,7 +102,6 @@ struct cm_buffer {
     return len;
   }
 
-
   inline void clear() {
     len = 0;
     buf[0] = '\0';
@@ -116,7 +116,7 @@ struct cm_buffer {
 
   inline void append(const char *s, size_t s_sz) {
 
-    size_t n = ( s_sz < available() ? s_sz : available()-1);
+    size_t n = ( s_sz < available() ? s_sz : available() - 1);
     memcpy(&buf[len], s, n);
     len += n;
     buf[len] = '\0';
@@ -146,7 +146,6 @@ struct cm_buffer {
     len += (ss >= n ? n : ss );
   }
 
-
   inline void append(unsigned long l) {
     size_t n = available();
     int ss = snprintf(&buf[len], n, "%lu", l);
@@ -162,7 +161,6 @@ struct cm_buffer {
   inline void append(const __FlashStringHelper *ifsh) {
     append(reinterpret_cast<const char *>(ifsh));
   }
-
 };
 
 // provide a buffer we can control since ESP32 API is brain dead in this area!
@@ -170,15 +168,35 @@ char tx_buf[1024];
 cm_buffer tx_buffer(tx_buf, sizeof(tx_buf));
 
 bool wifi_out = false;
+#undef F
+#define F(s) (s)
+#endif
 
-#define con_flush() if(wifi_out) { client.print(tx_buf); client.flush(); tx_buffer.clear(); } \
-  else Serial.flush();
+#ifdef ESP32
 
-#define con_print(s) if(wifi_out) tx_buffer.append(s); \
-  else Serial.print(s)
+inline void con_flush() {
+  if(wifi_out) {
+    client.print(tx_buf);
+    client.flush();
+    tx_buffer.clear();
+  } 
+  else {
+    Serial.flush(); 
+  }
+}
 
-#define con_println(s) if(wifi_out) { tx_buffer.append(s); tx_buffer.append("\r\n"); con_flush(); }\
-  else Serial.println(s)
+#define con_print(s)  if(wifi_out) tx_buffer.append((s)); else Serial.print((s))
+
+#define con_println(s)  if(wifi_out) { tx_buffer.append((s)); tx_buffer.append("\r\n"); con_flush(); }\
+  else Serial.println((s))
+  
+#else
+
+#define con_flush() Serial.flush()
+#define con_print(s) Serial.print((s))
+#define con_println(s) Serial.println((s))
+
+#endif
 
 ////////////////////////// EEPROM ///////////////////////////////
 
@@ -217,12 +235,12 @@ void wifi_close_connection() {
 void check_wifi_connection() {
 
   // if no wifi, re-initialize
-  if(WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED) {
     wifi_close_connection();
     init_wifi();
     return;
   }
-   
+
   // ESP32 API fails to expose the reconnect method in WiFiClient! WTF?!!
   // if we lost server connection, attempt reconnect
   for(int timeout = 6; !client.connected() && timeout > 0; timeout--) {
@@ -242,41 +260,40 @@ void init_wifi() {
 
 retry:
   if(WiFi.status() != WL_CONNECTED && eeprom_data.ssid[0]) {
-  Serial.println();
-  Serial.print(F("Attempting to connect to "));
-  Serial.print(eeprom_data.ssid);
+    Serial.print(F("Attempting to connect to "));
+    Serial.print(eeprom_data.ssid);
 
-  // setup unique hostname for this device
-  WiFi.macAddress(mac_address);
-  sprintf(hostname,  DEVICE_PREFIX "-%02x%02x%02x%02x%02x%02x",
-          mac_address[0], mac_address[1], mac_address[2],
-          mac_address[3], mac_address[4], mac_address[5]);
+    // setup unique hostname for this device
+    WiFi.macAddress(mac_address);
+    sprintf(hostname,  DEVICE_PREFIX "-%02x%02x%02x%02x%02x%02x",
+            mac_address[0], mac_address[1], mac_address[2],
+            mac_address[3], mac_address[4], mac_address[5]);
 
-  WiFi.disconnect();
-  WiFi.setHostname(hostname);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(eeprom_data.ssid, eeprom_data.password, 0, NULL, true);
-  WiFi.setHostname(hostname);
+    WiFi.disconnect();
+    WiFi.setHostname(hostname);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(eeprom_data.ssid, eeprom_data.password, 0, NULL, true);
+    WiFi.setHostname(hostname);
 
-  int timeout = 30; // seconds
-  while (WiFi.status() != WL_CONNECTED && --timeout > 0) {
-    delay(500);
-    Serial.print(F("."));
-    delay(500);
-  }
-  Serial.println();
+    int timeout = 30; // seconds
+    while (WiFi.status() != WL_CONNECTED && --timeout > 0) {
+      delay(500);
+      Serial.print(F("."));
+      delay(500);
+    }
+    Serial.println();
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print(F("WiFi connected as local IP address: "));
-    Serial.println(WiFi.localIP());
-  }
-  else {
-    Serial.println(F("Timed out. WiFi not available."));
-    goto retry;
-  }
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.print(F("WiFi connected as local IP address: "));
+      Serial.println(WiFi.localIP());
+    }
+    else {
+      Serial.println(F("Timed out. WiFi not available."));
+      goto retry;
+    }
 
-  WiFi.setHostname(hostname);
-  
+    WiFi.setHostname(hostname);
+
   }
   if (eeprom_data.server_address[0] && eeprom_data.server_port > 0) {
     Serial.print(F("Connecting to "));
@@ -391,6 +408,7 @@ void init_tsl2561() {
 void setup() {
   Serial.begin(9600);
   while (!Serial) { }
+  delay(500);
 
 #ifndef ESP32
   pinMode(LED_BUILTIN, OUTPUT);
@@ -400,6 +418,8 @@ void setup() {
 #ifdef ESP32
   EEPROM.begin(1024);
 #endif
+
+  con_println(F(DEVICE_PREFIX " build: " __DATE__ " " __TIME__));
 
   // useful for taking it back to "new"
   //memset(&eeprom_data, 0, sizeof(eeprom_data));
@@ -418,11 +438,19 @@ void setup() {
 #ifdef DS18B20
   init_ds18b20();
 #endif
+
+#define VORTEX_TIME_WATCH
+#ifdef VORTEX_TIME_WATCH
+  con_println(F("*T #T"));
+#endif
+  
 }
 
 void output_field_seperator() {
   con_print(F(","));
 }
+
+/////////////////////////////////// config API ///////////////////////////////////
 
 bool set_server_address_and_port(char *buf, size_t sz) {
 
@@ -458,12 +486,24 @@ bool set_ssid_and_password(char *buf, size_t sz) {
   }
   return false;
 }
-void process_config_input(String &str) {
+
+void normalize_input() {
+  // format:  key:value
+  int colon_index = input.indexOf(':');
+  if (colon_index > 0 && input.length() > colon_index + 1) {
+    String key = input.substring(0, colon_index);
+    String val = input.substring(colon_index + 1);
+    // format for config input:  T:000000  becomes T000000
+    input = key + val;
+  }
+}
+
+void process_config_input(String &str, bool safe_source) {
 
   if (str[0] == 'T') {
     // epoch time
     // T1573615730
-    count = str.substring(1).toInt() + 3;
+    count = str.substring(1).toInt();
   }
   else if (str[0] == 'I') {
     // interval (seconds)
@@ -477,7 +517,7 @@ void process_config_input(String &str) {
     update_eeprom();
   }
 #ifdef ESP32
-  else if (str[0] == 'C') {
+  else if (str[0] == 'C' && safe_source) {
     // connect to IP:port
     // C192.168.1.104:54000
 
@@ -493,8 +533,8 @@ void process_config_input(String &str) {
       init_wifi();
     }
   }
-  else if (str[0] == 'W') {
-    // connect to IP:port
+  else if (str[0] == 'W' && safe_source) {
+    // connect to SSID:password
     // WSSID:password
 
     char buf[sizeof eeprom_data.ssid + sizeof eeprom_data.password];
@@ -508,7 +548,7 @@ void process_config_input(String &str) {
       }
       init_wifi();
     }
-    
+
   }
 #endif
   else if (input[0] == '+' && input[1] == 'A' && input[2] == '0') {
@@ -517,47 +557,80 @@ void process_config_input(String &str) {
   }
 }
 
-
 void loop() {
+  ////////////////////// clock /////////////////////
+
+  static unsigned long clock = 0;
+  unsigned long now = count;
+  while(now == count) {
+    if((millis() - clock) >= 1000) {
+      clock = millis();
+      //Serial.print(millis()); Serial.println(" ms");
+      count++;
+    }
+  
+  ///////////////////// serial inputs ////////////
+
+  if (Serial.available() > 0) {
+    input = Serial.readString();
+    input.trim();
+    normalize_input();
+    process_config_input(input, true);
+  }
+
+  //////////////////// wifi inputs ///////////////
+#ifdef ESP32
+  if (client.connected() && client.available() > 0) {
+    input = client.readString();
+    input.trim();
+    normalize_input();
+    process_config_input(input, false);
+  }
+#endif
+    
+  } // end clock
 
   /////////////////// sensor reads ////////////////
 
-  if (sht31_found) {
+  if((count % 2) == 0) {
+    if (sht31_found) {
 
-    temperature = sht31.readTemperature();
-    humidity = sht31.readHumidity();
+      temperature = sht31.readTemperature();
+      humidity = sht31.readHumidity();
 
-  }
+    }
 
-  if (tsl_found) {
+    if (tsl_found) {
 
-    //If event.light = 0 lux the sensor is probably saturated
-    //and no reliable data could be generated!
-    sensors_event_t event;
-    tsl.getEvent(&event);
-    lux = event.light;
+      //If event.light = 0 lux the sensor is probably saturated
+      //and no reliable data could be generated!
+      sensors_event_t event;
+      tsl.getEvent(&event);
+      lux = event.light;
 
-    tsl.getLuminosity(&bb_lum, &ir_lum);
-  }
+      tsl.getLuminosity(&bb_lum, &ir_lum);
+    }
 
-  if (soil_found) {
-    soil_moisture = map(analogRead(soil_pin), 0, 3505, 100, 0);
-  }
+    if(soil_found) {
+      soil_moisture = map(analogRead(soil_pin), 0, 3505, 100, 0);
+    }
 
 #ifdef DS18B20
-  if (ds18b20_found) {
+    if(ds18b20_found) {
 
-    temp_sensor.requestTemperatures();
-    ds_temperature = temp_sensor.getTempC(thermometer_address);
+      temp_sensor.requestTemperatures();
+      ds_temperature = temp_sensor.getTempC(thermometer_address);
 
-  }
+    }
 #endif
-
+  }
   ////////////////// data outputs ///////////////
 
-  if ((++count % interval) == 0) {
+  if ((count % interval) == 0) {
 
-    if(wifi_out) check_wifi_connection();
+#ifdef ESP32
+    if (wifi_out) check_wifi_connection();
+#endif
 
     con_print(eeprom_data.sID);
 
@@ -638,17 +711,5 @@ void loop() {
 
   } //end interval
 
-  ///////////////////// serial inputs ////////////
 
-  if (Serial.available() > 0) {
-    input = Serial.readString();
-    input.trim();
-    process_config_input(input);
-  }
-
-  //////////////////// wifi inputs ///////////////
-
-
-
-  delay(943);
 }
