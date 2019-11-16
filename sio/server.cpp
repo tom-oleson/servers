@@ -47,30 +47,31 @@ void _sleep(int interval /* ms */) {
 }
 
 cm::mutex rx_mutex;
+cm::mutex tx_mutex;
 cm::cond rx_response;
-bool rx_received = false;
 const char *rx_buffer = nullptr;
 size_t rx_len = 0;
 
-// sio_server receive data from sio client
+// sio_server receive data from sio client, look for server response
 void server_receive(int fd, const char *buf, size_t sz) {
 
     if(nullptr != client) {
         if(client->is_connected()) {
-            cm_net::send(client->get_socket(), std::string(buf, sz));
 
             rx_mutex.lock();
+            tx_mutex.lock();
+
+            cm_net::send(client->get_socket(), std::string(buf, sz));
 
             timespec now;
             clock_gettime(CLOCK_REALTIME, &now);
             time_t timeout = cm_time::millis(now) + 100;   // 100ms
 
-            rx_received = false;
+            while(rx_len == 0) {
 
-            while(!rx_received) {
-
-                // unlocks mutex, then sleeps
-                // on wakeup signal, locks mutex again
+                // unlocks rx_mutex, then sleeps
+                // on wakeup signal, locks rx_mutex again
+                // and thread begins to run again...
                 timespec ts = {0, 10000000};   // 10 ms
                 rx_response.timed_wait(rx_mutex, ts);
 
@@ -83,9 +84,13 @@ void server_receive(int fd, const char *buf, size_t sz) {
                 }
             }
 
-            // send received data to serial fd
-            if(rx_len > 0) cm_sio::sio_write(fd, rx_buffer, rx_len);
+            // send response data to serial fd
+            if(rx_len > 0) {
+                cm_sio::sio_write(fd, rx_buffer, rx_len);
+                rx_len = 0;     // set to consumed
+            }
 
+            tx_mutex.unlock();
             rx_mutex.unlock();
             rx_response.signal();
         }
@@ -100,17 +105,29 @@ void server_receive(int fd, const char *buf, size_t sz) {
     }
 }
 
+
+std::vector<int> port_fds;
+
+
 void client_receive(int socket, const char *buf, size_t sz) {
     
     rx_mutex.lock();
-
     rx_buffer = buf;
     rx_len = sz;
-    rx_received = true;
-    
     rx_mutex.unlock();
 
     rx_response.signal();   // wake up waiting thread
+
+    // if data not consumed by server_receive response, this is an
+    // incoming request from the server, echo to each connected sio device
+    tx_mutex.lock();
+    if(rx_len > 0) {
+        for(auto fd: port_fds) {
+            cm_sio::sio_write(fd, rx_buffer, rx_len);
+        }
+        rx_len = 0;     // set to consumed
+    }
+    tx_mutex.unlock();
 }
 
 void sioecho::run(const std::vector<std::string> &ports, const std::string &host_name, int _host_port) {
@@ -128,6 +145,8 @@ void sioecho::run(const std::vector<std::string> &ports, const std::string &host
     time_t next_connect_time = 0;
 
     cm_sio::sio_server server(ports, server_receive);
+    port_fds = server.get_port_fds();
+
     while( !server.is_done() ) {
         _sleep(1000);
 
