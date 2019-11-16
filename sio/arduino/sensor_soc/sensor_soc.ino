@@ -290,7 +290,7 @@ retry:
     WiFi.begin(eeprom_data.ssid, eeprom_data.password, 0, NULL, true);
     WiFi.setHostname(hostname);
 
-    int timeout = 30; // seconds
+    int timeout = 120; // seconds
     while (WiFi.status() != WL_CONNECTED && --timeout > 0) {
       delay(500);
       Serial.print(F("."));
@@ -303,8 +303,9 @@ retry:
       Serial.println(WiFi.localIP());
     }
     else {
-      Serial.println(F("Timed out. WiFi not available."));
-      goto retry;
+      Serial.println(F("Timed out. WiFi not available. Restarting..."));
+      //goto retry;
+      ESP.restart();
     }
 
     WiFi.setHostname(hostname);
