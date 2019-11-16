@@ -170,10 +170,10 @@ cm_buffer tx_buffer(tx_buf, sizeof(tx_buf));
 bool wifi_out = false;
 #undef F
 #define F(s) (s)
-#endif
+
+#endif  //ESP32
 
 #ifdef ESP32
-
 inline void con_flush() {
   if(wifi_out) {
     client.print(tx_buf);
@@ -184,17 +184,32 @@ inline void con_flush() {
     Serial.flush(); 
   }
 }
-
 #define con_print(s)  if(wifi_out) tx_buffer.append((s)); else Serial.print((s))
-
 #define con_println(s)  if(wifi_out) { tx_buffer.append((s)); tx_buffer.append("\r\n"); con_flush(); }\
   else Serial.println((s))
-  
 #else
-
 #define con_flush() Serial.flush()
 #define con_print(s) Serial.print((s))
 #define con_println(s) Serial.println((s))
+#endif //ESP32
+
+#define TOK_LOGGER
+#ifdef TOK_LOGGER
+#define _log_flush() con_flush()
+#define _log_name() con_print(eeprom_data.sID); con_print(F(" {"))
+#define _log_sep() con_print(F(","))
+#define _log_time() con_print(JS("time")":"); con_print(count)
+#define _log_lvl(s) con_print(F(JS(s)":"))
+#define _log_msg(s)  con_print("\""); con_print((s)); con_print("\"")
+#define _log_end() con_println(F("}"))
+
+#define log_info(s) { _log_name(); _log_time(); _log_sep(); _log_lvl("info"); _log_msg((s)); _log_end(); }
+#define log_warn(s) { _log_name(); _log_time(); _log_sep(); _log_lvl("warn"); _log_msg((s)); _log_end(); }
+#define log_error(s) { _log_name(); _log_time(); _log_sep(); _log_lvl("error"); _log_msg((s)); _log_end(); }
+#else
+#define log_info(s) 
+#define log_warn(s)
+#define log_warn(s)
 
 #endif
 
@@ -306,12 +321,15 @@ retry:
     else {
       // missing API in ESP32!  No way to control flush on write!
       //client.setDefaultSync(false);
-
       Serial.println(F("Connection successful"));
       wifi_out = true;
+
       char buf[80];
-      snprintf(buf, sizeof(buf), "+hello 'Hello from %s!'", hostname);
-      con_println(buf);
+      //snprintf(buf, sizeof(buf), "+hello 'Hello from %s!'", hostname);
+      //con_println(buf);
+      snprintf(buf, sizeof(buf), "Hello from eTOK: %s", hostname);
+      log_info(buf);
+      
     }
   }
 }
@@ -346,16 +364,22 @@ void init_ds18b20() {
     temp_sensor.setResolution(thermometer_address, 11);
 
     // print device address
-    Serial.print(F("DS1820B device address:"));
-    for (uint8_t i = 0; i < 8; i++) {
-      if (thermometer_address[i] < 16) Serial.print(F("0"));
-      Serial.print(thermometer_address[i], HEX);
-    }
-
-    Serial.println();
+    //Serial.print(F("DS1820B device address:"));
+    //for (uint8_t i = 0; i < 8; i++) {
+      //if (thermometer_address[i] < 16) Serial.print(F("0"));
+      //Serial.print(thermometer_address[i], HEX);
+    //}
+    //Serial.println();
+    
+    char buf[45];
+    snprintf(buf, sizeof(buf), "DS1820B device address: %02x%02x%02x%02x%02x%02x%02x%02x",
+          thermometer_address[0], thermometer_address[1], thermometer_address[2], thermometer_address[3],
+          thermometer_address[4], thermometer_address[5], thermometer_address[6], thermometer_address[7]);
+    log_info(buf);
   }
   else {
-    Serial.println(F("No DS1820B sensor found"));
+    //Serial.println(F("No DS1820B sensor found"));
+    log_info(F("No DS1820B sensor found"));
   }
 }
 #endif
@@ -364,7 +388,8 @@ void init_sht31() {
 
   sht31_found = sht31.begin(0x44);
   if (!sht31_found) {
-    Serial.println(F("No SHT31 sensor found"));
+    //Serial.println(F("No SHT31 sensor found"));
+    log_info(F("No SHT31 sensor found"));
   }
 }
 
@@ -372,7 +397,8 @@ void init_tsl2561() {
 
   tsl_found = tsl.begin();
   if (!tsl_found) {
-    Serial.println(F("No TSL2516 sensor found"));
+    //Serial.println(F("No TSL2516 sensor found"));
+    log_info(F("No TSL2516 sensor found"));
   }
   else {
 
@@ -386,14 +412,16 @@ void init_tsl2561() {
 
     // Auto-gain: auto switch between 1x and
     tsl.enableAutoRange(true);
-    Serial.println(F("TLS Gain: Auto"));
+    //Serial.println(F("TLS Gain: Auto"));
+    log_info(F("TLS Gain: Auto"));
 
     // Changing integration time gives better sensor
     // resolution (402ms = 16-bit data)
 
     // fast but low resolution
     tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_13MS); // fast but low resolution
-    Serial.println(F("TLS Timing: 13 ms"));
+    //Serial.println(F("TLS Timing: 13 ms"));
+    log_info(F("TLS Timing: 13 ms"));
 
     // medium resolution and speed
     // tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_101MS);
@@ -443,6 +471,11 @@ void setup() {
 #ifdef VORTEX_TIME_WATCH
   con_println(F("*T #T"));
 #endif
+
+  char buf[40];
+  snprintf(buf, sizeof(buf), "hello from eTOK: %s", eeprom_data.sID+1);
+  log_info(buf);
+
   
 }
 
