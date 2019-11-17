@@ -304,8 +304,8 @@ retry:
     }
     else {
       Serial.println(F("Timed out. WiFi not available. Restarting..."));
-      //goto retry;
-      ESP.restart();
+      goto retry;
+      //ESP.restart();  // try this later
     }
 
     WiFi.setHostname(hostname);
@@ -313,25 +313,32 @@ retry:
   }
   if (eeprom_data.server_address[0] && eeprom_data.server_port > 0) {
     Serial.print(F("Connecting to "));
-    Serial.println(eeprom_data.server_address);
+    Serial.print(eeprom_data.server_address);
     delay(1000);
 
-    if (!client.connect(eeprom_data.server_address, eeprom_data.server_port)) {
+    int timeout = 120;
+    while(!client.connect(eeprom_data.server_address, eeprom_data.server_port) && --timeout > 0) {
+      delay(500);
+      Serial.print(F("."));
+      delay(500);
+    }
+    Serial.println();
+    
+    if(!client.connected()) { 
       Serial.println(F("Connection failed"));
+      goto retry;
     }
-    else {
-      // missing API in ESP32!  No way to control flush on write!
-      //client.setDefaultSync(false);
-      Serial.println(F("Connection successful"));
-      wifi_out = true;
+    
+    // missing API in ESP32!  No way to control flush on write!
+    //client.setDefaultSync(false);
+    Serial.println(F("Connection successful"));
+    wifi_out = true;
 
-      char buf[80];
-      //snprintf(buf, sizeof(buf), "+hello 'Hello from %s!'", hostname);
-      //con_println(buf);
-      snprintf(buf, sizeof(buf), "Hello from eTOK: %s", hostname);
-      log_info(buf);
-      
-    }
+    char buf[80];
+    //snprintf(buf, sizeof(buf), "+hello 'Hello from %s!'", hostname);
+    //con_println(buf);
+    snprintf(buf, sizeof(buf), "Hello from eTOK: %s", hostname);
+    log_info(buf);
   }
 }
 #endif
