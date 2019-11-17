@@ -36,7 +36,7 @@
 
 #define ESP32
 #define DS18B20
-#define VORTEX_TIME_WATCH
+#define VORTEX_WATCH
 
 #define DEVICE_PREFIX "eTOK"
 #define JS(s) "" #s ""
@@ -240,6 +240,23 @@ void update_eeprom() {
 #endif
 }
 
+////////////////////////// VORTEX ///////////////////////////////
+
+#ifdef VORTEX_WATCH
+void vortex_watch(char *buf) {
+  // time watch
+  con_println(F("*T #T"));
+  
+  // notify watch
+  // format: *arduino003-notify #$
+  strcpy(buf, "*");
+  strncat(buf, eeprom_data.sID+1, sizeof(eeprom_data.sID)-1);
+  strcat(buf, "-notify #$");
+  con_println(buf);
+}
+#endif
+
+
 ////////////////////////// WiFi ///////////////////////////////
 
 #ifdef ESP32
@@ -341,9 +358,8 @@ retry:
     snprintf(buf, sizeof(buf), "Hello from eTOK: %s", hostname);
     log_info(buf);
 
-
-#ifdef VORTEX_TIME_WATCH
-  con_println(F("*T #T"));
+#ifdef VORTEX_WATCH
+    vortex_watch(buf);
 #endif
   }
 }
@@ -481,15 +497,15 @@ void setup() {
   init_ds18b20();
 #endif
 
-#ifdef VORTEX_TIME_WATCH
-  if(!wifi_out) con_println(F("*T #T"));
+  char buf[80];
+  
+#ifdef VORTEX_WATCH
+  vortex_watch(buf);
 #endif
 
-  char buf[40];
   snprintf(buf, sizeof(buf), "hello from eTOK: %s", eeprom_data.sID+1);
   log_info(buf);
-
-  
+ 
 }
 
 void output_field_seperator() {
@@ -534,6 +550,15 @@ bool set_ssid_and_password(char *buf, size_t sz) {
 }
 
 void normalize_input() {
+
+  //Serial.println(input);
+  
+  // format:  $:value (from notify)
+  if(input.length() > 2 && input[0] == '$' && input[1] == ':') {
+    String val = input.substring(2);
+    input = val;
+    return;
+  }
   // format:  key:value
   int colon_index = input.indexOf(':');
   if (colon_index > 0 && input.length() > colon_index + 1) {
