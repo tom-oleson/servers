@@ -36,6 +36,7 @@
 
 #define ESP32
 #define DS18B20
+#define VORTEX_TIME_WATCH
 
 #define DEVICE_PREFIX "eTOK"
 #define JS(s) "" #s ""
@@ -339,6 +340,11 @@ retry:
     //con_println(buf);
     snprintf(buf, sizeof(buf), "Hello from eTOK: %s", hostname);
     log_info(buf);
+
+
+#ifdef VORTEX_TIME_WATCH
+  con_println(F("*T #T"));
+#endif
   }
 }
 #endif
@@ -475,9 +481,8 @@ void setup() {
   init_ds18b20();
 #endif
 
-#define VORTEX_TIME_WATCH
 #ifdef VORTEX_TIME_WATCH
-  con_println(F("*T #T"));
+  if(!wifi_out) con_println(F("*T #T"));
 #endif
 
   char buf[40];
