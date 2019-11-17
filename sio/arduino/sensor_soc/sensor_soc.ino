@@ -538,17 +538,20 @@ void process_config_input(String &str, bool safe_source) {
     // epoch time
     // T1573615730
     count = str.substring(1).toInt();
+    log_info(str.c_str());
   }
   else if (str[0] == 'I') {
     // interval (seconds)
     //I10
     interval = str.substring(1).toInt();
+    log_info(str.c_str());
   }
   else if (str[0] == 'N') {
     // name string
     // N+arduino001
     str.substring(1).toCharArray(eeprom_data.sID, sizeof(eeprom_data.sID));
     update_eeprom();
+    log_info(str.c_str());
   }
 #ifdef ESP32
   else if (str[0] == 'C' && safe_source) {
@@ -561,6 +564,7 @@ void process_config_input(String &str, bool safe_source) {
     str.substring(1).toCharArray(buf, sizeof(buf));
 
     if (set_server_address_and_port(buf, sizeof(buf))) {
+      log_info(str.c_str());
       if (wifi_out) {
         wifi_close_connection();
       }
@@ -577,6 +581,8 @@ void process_config_input(String &str, bool safe_source) {
     str.substring(1).toCharArray(buf, sizeof(buf));
 
     if (set_ssid_and_password(buf, sizeof(buf))) {
+      // note: do NOT send SSID and password out in the clear, ever!!
+      log_info(F("SSID:password set"));
       if (wifi_out) {
         wifi_close_connection();
       }
@@ -585,9 +591,10 @@ void process_config_input(String &str, bool safe_source) {
 
   }
 #endif
-  else if (input[0] == '+' && input[1] == 'A' && input[2] == '0') {
+  else if (str[0] == '+' && str[1] == 'A' && str[2] == '0') {
     // +A0
     soil_found = true;
+    log_info(str.c_str());
   }
 }
 
@@ -601,7 +608,7 @@ void loop() {
       clock = millis();
       //Serial.print(millis()); Serial.println(" ms");
       count++;
-    }
+  }
   
   ///////////////////// serial inputs ////////////
 
