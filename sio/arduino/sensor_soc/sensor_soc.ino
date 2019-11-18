@@ -105,7 +105,7 @@ struct cm_buffer {
 
   inline void clear() {
     len = 0;
-    buf[0] = '\0';
+    memset(buf, 0, sz);
   }
 
   inline void append(char ch) {
@@ -165,7 +165,7 @@ struct cm_buffer {
 };
 
 // provide a buffer we can control since ESP32 API is brain dead in this area!
-char tx_buf[1024];
+char tx_buf[512];
 cm_buffer tx_buffer(tx_buf, sizeof(tx_buf));
 
 bool wifi_out = false;
@@ -201,7 +201,9 @@ inline void con_flush() {
 #define _log_sep() con_print(F(","))
 #define _log_time() con_print(JS("time")":"); con_print(count)
 #define _log_lvl(s) con_print(F(JS(s)":"))
-#define _log_msg(s)  con_print("\""); con_print((s)); con_print("\"")
+//#define _log_msg(s)  con_print("\""); con_print((s)); con_print("\"")
+//#define _log_msg(s) con_print(JS(s)) 
+#define _log_msg(s)  con_print('\"'); con_print((s)); con_print('\"')
 #define _log_end() con_println(F("}"))
 
 #define log_info(s) { _log_name(); _log_time(); _log_sep(); _log_lvl("info"); _log_msg((s)); _log_end(); }
@@ -352,10 +354,8 @@ retry:
     Serial.println(F("Connection successful"));
     wifi_out = true;
 
-    char buf[80];
-    //snprintf(buf, sizeof(buf), "+hello 'Hello from %s!'", hostname);
-    //con_println(buf);
-    snprintf(buf, sizeof(buf), "Hello from eTOK: %s", hostname);
+    char buf[60];
+    snprintf(buf, sizeof(buf), "Hello from: %s", hostname);
     log_info(buf);
 
 #ifdef VORTEX_WATCH
@@ -497,13 +497,13 @@ void setup() {
   init_ds18b20();
 #endif
 
-  char buf[80];
+  char buf[60];
   
 #ifdef VORTEX_WATCH
   vortex_watch(buf);
 #endif
 
-  snprintf(buf, sizeof(buf), "hello from eTOK: %s", eeprom_data.sID+1);
+  snprintf(buf, sizeof(buf), "hello from: %s", eeprom_data.sID+1);
   log_info(buf);
  
 }
@@ -727,7 +727,7 @@ void loop() {
 
       con_print(F(JS("temp")":"));
       if (isnan(temperature)) {
-        con_print(F(JS("NaN")));
+        con_print(F("NaN"));
       }
       else {
         con_print(temperature);
@@ -737,7 +737,7 @@ void loop() {
 
       con_print(F(JS("hum")":"));
       if (isnan(humidity)) {
-        con_print(F(JS("NaN")));
+        con_print(F("NaN"));
       }
       else {
         con_print(humidity);
@@ -788,6 +788,4 @@ void loop() {
     con_flush();
 
   } //end interval
-
-
-}
+} // end loop

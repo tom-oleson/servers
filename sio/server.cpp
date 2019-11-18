@@ -62,8 +62,8 @@ void clear_rx_buffer(size_t sz) {
 // sio_server received data from sio client
 void server_receive(int fd, const char *buf, size_t sz) {
 
-    std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
-    std::cout.flush();
+    //std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
+    //std::cout.flush();
 
     if(nullptr != client) {
         if(client->is_connected()) {
@@ -75,6 +75,12 @@ void server_receive(int fd, const char *buf, size_t sz) {
             if(written < 0) {
                 cm_net::err("server_receive: net_write", errno);
             }
+	    else {
+        	CM_LOG_TRACE {
+	           cm_log::trace(cm_util::format("%d: sent request:", client->get_socket()));
+	           cm_log::hex_dump(cm_log::level::trace, buf, written, 16);
+	        }
+	    }
 
             timespec now;
             clock_gettime(CLOCK_REALTIME, &now);
@@ -105,6 +111,16 @@ void server_receive(int fd, const char *buf, size_t sz) {
                 if(written < 0) {
                     cm_sio::err("server_receive: sio_write", errno);
                 }
+		else {
+               	    CM_LOG_TRACE {
+	    	        cm_log::trace(cm_util::format("%d: received response:", fd));
+               	        cm_log::hex_dump(cm_log::level::trace, rx_buffer, rx_sz, 16);
+                    }
+		    if(written < rx_sz) {
+			cm_log::warning(cm_util::format("only %d bytes of %d received were written to sio", written, rx_sz));	    
+		    }
+		}
+
                 clear_rx_buffer(rx_sz);  // set to consumed
             }
 
@@ -116,10 +132,10 @@ void server_receive(int fd, const char *buf, size_t sz) {
             // to-do: add send queue
         }
     }
-//    else if(-1 == host_port) {
-//        std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
-//        std::cout.flush();
-//    }
+    else if(-1 == host_port) {
+        std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
+        std::cout.flush();
+    }
 }
 
 

@@ -35,5 +35,6 @@ void sioecho::init_logs() {
     //cm_log::console.set_date_time_format("%m/%d/%Y %H:%M:%S");
     //cm_log::console.set_message_format("${date_time} [${lvl}]: ${msg}");
     cm_log::console.set_message_format("${msg}");
+    //cm_log::console.set_color_enable(true);
 
 }
