@@ -1,3 +1,5 @@
+#include <Mouse.h>
+
 /*
    Copyright (c) 2019, Tom Oleson <tom dot oleson at gmail dot com>
    All rights reserved.
@@ -549,28 +551,30 @@ bool set_ssid_and_password(char *buf, size_t sz) {
   return false;
 }
 
-void normalize_input() {
+void normalize_input(String &s) {
 
   //Serial.println(input);
   
   // format:  $:value (from notify)
-  if(input.length() > 2 && input[0] == '$' && input[1] == ':') {
-    String val = input.substring(2);
-    input = val;
+  if(s.length() > 2 && s[0] == '$' && s[1] == ':') {
+    String val = s.substring(2);
+    s = val;
     return;
   }
   // format:  key:value
-  int colon_index = input.indexOf(':');
-  if (colon_index > 0 && input.length() > colon_index + 1) {
-    String key = input.substring(0, colon_index);
-    String val = input.substring(colon_index + 1);
+  int colon_index = s.indexOf(':');
+  if (colon_index > 0 && s.length() > colon_index + 1) {
+    String key = s.substring(0, colon_index);
+    String val = s.substring(colon_index + 1);
     // format for config input:  T:000000  becomes T000000
-    input = key + val;
+    s = key + val;
   }
 }
+  
+void evaluate(String &str, bool safe_source) {
 
-void process_config_input(String &str, bool safe_source) {
-
+  normalize_input(str);
+  
   if (str[0] == 'T') {
     // epoch time
     // T1573615730
@@ -635,6 +639,30 @@ void process_config_input(String &str, bool safe_source) {
   }
 }
 
+// split input string on '\n' because client.readStringUntil('\n') is
+// brain dead...
+void process_config_input(String &s, bool safe_source) {
+
+#ifdef ESP32
+    char my_buf[1024] = {'\0' };
+#else
+    char my_buf[80] = {'\0' };
+#endif    
+    char *bp = my_buf;
+    const char *cp = s.c_str();
+    int index = 0;
+    for(char *sp = bp; index < sizeof(my_buf); cp++ ) {
+        if(*cp == '\0' || *cp == '\n') {
+            String ns = String(sp);
+            evaluate(ns, safe_source);
+            sp = bp + 1;
+        }
+        if(*cp == '\0') break;
+        *bp++ = *cp;
+        index++;
+    }
+}
+
 void loop() {
   ////////////////////// clock /////////////////////
 
@@ -652,7 +680,6 @@ void loop() {
   if (Serial.available() > 0) {
     input = Serial.readString();
     input.trim();
-    normalize_input();
     process_config_input(input, true);
   }
 
@@ -661,7 +688,6 @@ void loop() {
   if (client.connected() && client.available() > 0) {
     input = client.readString();
     input.trim();
-    normalize_input();
     process_config_input(input, false);
   }
 #endif
