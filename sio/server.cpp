@@ -28,6 +28,7 @@
  */
 
 #include "server.h"
+#include <string.h>
 
 cm_net::client_thread *client = nullptr;
 bool connected = false;
@@ -49,11 +50,20 @@ void _sleep(int interval /* ms */) {
 cm::mutex rx_mutex;
 cm::mutex tx_mutex;
 cm::cond rx_response;
-const char *rx_buffer = nullptr;
+char *rx_buffer = nullptr;
+size_t rx_sz = 0;
 size_t rx_len = 0;
+
+void clear_rx_buffer(size_t sz) {
+    memset(rx_buffer, 0, sz);
+    rx_len = 0;
+} 
 
 // sio_server received data from sio client
 void server_receive(int fd, const char *buf, size_t sz) {
+
+    std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
+    std::cout.flush();
 
     if(nullptr != client) {
         if(client->is_connected()) {
@@ -95,7 +105,7 @@ void server_receive(int fd, const char *buf, size_t sz) {
                 if(written < 0) {
                     cm_sio::err("server_receive: sio_write", errno);
                 }
-                rx_len = 0;     // set to consumed
+                clear_rx_buffer(rx_sz);  // set to consumed
             }
 
             rx_mutex.unlock();
@@ -106,10 +116,10 @@ void server_receive(int fd, const char *buf, size_t sz) {
             // to-do: add send queue
         }
     }
-    else if(-1 == host_port) {
-        std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
-        std::cout.flush();
-    }
+//    else if(-1 == host_port) {
+//        std::cout << cm_util::format("%s", std::string(buf, sz).c_str());
+//        std::cout.flush();
+//    }
 }
 
 
@@ -119,7 +129,8 @@ std::vector<int> port_fds;
 void client_receive(int socket, const char *buf, size_t sz) {
     
     rx_mutex.lock();
-    rx_buffer = buf;
+    rx_buffer = (char *) buf;
+    rx_sz = sz;
     rx_len = sz;
     rx_mutex.unlock();
 
@@ -140,7 +151,7 @@ void client_receive(int socket, const char *buf, size_t sz) {
                 cm_sio::err("client_receive: sio_write", errno);
             }
         }
-        rx_len = 0;     // set to consumed
+        clear_rx_buffer(rx_sz);     // set to consumed
     }
     rx_mutex.unlock();
 
