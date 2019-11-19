@@ -1,4 +1,4 @@
-#include <Mouse.h>
+#define ESP32
 
 /*
    Copyright (c) 2019, Tom Oleson <tom dot oleson at gmail dot com>
@@ -36,7 +36,6 @@
 #include <Adafruit_TSL2561_U.h>
 #include <EEPROM.h>
 
-#define ESP32
 #define DS18B20
 #define VORTEX_WATCH
 
@@ -161,6 +160,10 @@ struct cm_buffer {
     len += (ss >= n ? n : ss);
   }
 
+  inline void append(String &s) {
+    append(s.c_str());
+  }
+
   inline void append(const __FlashStringHelper *ifsh) {
     append(reinterpret_cast<const char *>(ifsh));
   }
@@ -247,16 +250,25 @@ void update_eeprom() {
 ////////////////////////// VORTEX ///////////////////////////////
 
 #ifdef VORTEX_WATCH
-void vortex_watch(char *buf) {
+void vortex_watch() {
+  
   // time watch
   con_println(F("*T #T"));
+
+  // broadcast watch
+  con_println(F("*broadcast #$"));
   
   // notify watch
-  // format: *arduino003-notify #$
-  strcpy(buf, "*");
-  strncat(buf, eeprom_data.sID+1, sizeof(eeprom_data.sID)-1);
-  strcat(buf, "-notify #$");
-  con_println(buf);
+  // format: *name-notify #$name
+  String name = String(eeprom_data.sID+1);
+  String s = "*" + name + "-notify #$" + name;
+  con_println(s);
+  
+//  strcpy(buf, "*");
+//  strncat(buf, eeprom_data.sID+1, sizeof(eeprom_data.sID)-1);
+//  strcat(buf, "-notify #$");
+//  strncat(buf, eeprom_data.sID+1, sizeof(eeprom_data.sID)-1);
+//  con_println(buf);
 }
 #endif
 
@@ -361,7 +373,7 @@ retry:
     log_info(buf);
 
 #ifdef VORTEX_WATCH
-    vortex_watch(buf);
+    vortex_watch();
 #endif
   }
 }
@@ -502,7 +514,7 @@ void setup() {
   char buf[60];
   
 #ifdef VORTEX_WATCH
-  vortex_watch(buf);
+  vortex_watch();
 #endif
 
   snprintf(buf, sizeof(buf), "hello from: %s", eeprom_data.sID+1);
@@ -558,22 +570,40 @@ void normalize_input(String &s) {
   // format:  $:value (from notify)
   if(s.length() > 2 && s[0] == '$' && s[1] == ':') {
     String val = s.substring(2);
+    // input remains the same T000000 stays T000000
     s = val;
     return;
   }
+   
   // format:  key:value
   int colon_index = s.indexOf(':');
   if (colon_index > 0 && s.length() > colon_index + 1) {
     String key = s.substring(0, colon_index);
     String val = s.substring(colon_index + 1);
-    // format for config input:  T:000000  becomes T000000
-    s = key + val;
+    // format: $name-notify:value
+    if(key[0] == '$') {
+        String name = key.substring(1);
+        if(strcmp(name.c_str(), eeprom_data.sID+1) == 0) {
+          s = val;      
+        }
+        else {
+          // notify is NOT for this device, ignore the input!
+          s = "";
+        }
+    }
+    else {
+      // format for config input:  T:000000  becomes T000000
+      s = key + val;      
+    }
   }
 }
   
 void evaluate(String &str, bool safe_source) {
 
   normalize_input(str);
+
+  // ignore empty string
+  if(!(str.length() > 0)) return;
   
   if (str[0] == 'T') {
     // epoch time
@@ -594,6 +624,23 @@ void evaluate(String &str, bool safe_source) {
     update_eeprom();
     log_info(str.c_str());
   }
+#ifdef VORTEX_WATCH
+  else if(str[0] == 'V') {
+    char buf[60];
+
+    // send built-in watch config
+    vortex_watch();
+
+    // send watch config in this request (if any)
+    // format: V@name #tag
+    // format: V*name #tag
+    if(str.length() > 4 && str[1] == '*' || str[1] == '@') {
+      str.substring(1).toCharArray(buf, sizeof(buf));
+      con_println(buf);
+    }
+  }
+#endif
+  
 #ifdef ESP32
   else if (str[0] == 'C' && safe_source) {
     // connect to IP:port
