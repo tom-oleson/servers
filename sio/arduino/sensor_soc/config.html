@@ -1,0 +1,48 @@
+<html>
+<head>
+<style>
+html {
+  -webkit-text-size-adjust: 330%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; font-size:1.2em%;}
+h1 { width: 100%; background-color: #007777; color:white; font-size:180%; }
+input { width: 85%; background-color: gray;  color: white; font-size:120%;}
+td { color: white; font-size:150%; padding: 1px;}
+table {  height: 50%; background-color: #353535; margin: 5%; text-align: center; }
+
+
+</style>
+</head>
+<body>
+
+<h1>E-TOK</h1>
+
+<form action='/config' method='POST'>
+<table>
+<tr>
+<td>Network (SSID)</td>
+<td>Network Password</td>
+</tr>
+<tr>
+<td><input type='text' name='SSID' placeholder='ssid'></td>
+<td><input type='password' name='PASSWORD' placeholder='password'></td>
+</tr>
+<tr>
+<td>Server IP</td>
+<td>Server Port</td>
+</tr>
+<tr>
+<td><input type='server_ip' name='SERVER_IP' placeholder='server_ip'></td>
+<td><input type='sever_port' name='SERVER_PORT' placeholder='server_port' value='54000'></td>
+</tr>
+<tr>
+<td colspan=2> <input style="width: 100%; background-color: #007777; margin-top: 10%;" type='submit' name='SUBMIT' value='Save'></td>
+</tr>
+</table>
+
+</form>
+
+</body>
+</html>
