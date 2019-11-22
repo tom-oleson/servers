@@ -9,12 +9,14 @@ html {
 }
 body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; }
 h1 { width: 100%; background-color: #007777; color:white; font-size:130%; }
-input { width:100%; background-color: #353535;  color: white; font-size:100%;}
-td { color: white; font-size:100%;  }
-table {  width: 100%; height: 30%; background-color: #353535; text-align: center;}
+input { height: 120%; width:100%; background-color: #353535;  color: white; font-size:100%; }
+td { color: white; font-size:100%; }
+table {  width: 100%; height: 25%; background-color: #353535; text-align: center;}
 
-
-.data_row { height: 10%; font-size:100%; border: 1px solid gray; border: 1px solid gray; border-collapse: collapse;}
+.input_name { height: 5%; padding-top: 5%;}
+.data_row, .name_row { font-size:100%; border: 1px solid gray; border: 1px solid gray; border-collapse: collapse;}
+.data_row { height: 40%; }
+.name_row { height: 10%; }
 .container{ height:100%; }
 .panel {width: 100%;}
 table {
@@ -24,27 +26,27 @@ table {
 </style>
 </head>
 <body>
-<h1>ETOK-AP</h1>
+<h1>ETOK-AP ({{mac_address}})</h1>
 <div class="container">
 <div class="panel">
 <form action='/config' method='POST'>
 <table>
 <tbody>
-<tr>
-<td>Network (SSID)</td>
-<td>Network Password</td>
+<tr >
+<td class="input_name">Network (SSID)</td>
+<td class="input_name">Network Password</td>
 </tr>
 <tr>
-<td><input type='text' name='SSID' placeholder='ssid'></td>
-<td><input type='password' name='PASSWORD' placeholder='password'></td>
+<td><input type='text' name='SSID' placeholder='ssid' value='{{ssid}}'></td>
+<td><input type='password' name='PASSWORD' placeholder='password' value='{{ssid_password}}'></td>
 </tr>
 <tr>
-<td>Server IP</td>
-<td>Server Port</td>
+<td class="input_name">Server IP</td>
+<td class="input_name">Server Port</td>
 </tr>
 <tr>
-<td><input type='server_ip' name='SERVER_IP' placeholder='server_ip'></td>
-<td><input type='sever_port' name='SERVER_PORT' placeholder='server_port' value='54000'></td>
+<td><input type='text' name='SERVER_IP' placeholder='server_ip' value='{{server_ip}}'></td>
+<td><input type='text' name='SERVER_PORT' placeholder='server_port' value='54000' value='{{server_port}}'></td>
 </tr>
 <tr>
 <td colspan=2> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='SUBMIT' value='Update'></td>
@@ -57,14 +59,14 @@ table {
 <div class="panel">
 <table style="height: 25%; border: 1px solid gray; border-collapse: collapse;">
 <tbody>
-<tr class="data_row">
+<tr class="name_row">
     <td>AP Network IP</td>
 </tr>
 <tr class="data_row">
-    <td>255.255.255.255</td>
+    <td>{{ap_network_ip}}</td>
 </tr>
 <tr class="data_row">
-    <td>Connected</td>
+    <td>{{ap_connection}}</td>
 </tr>
 </tbody>
 </table>
@@ -74,17 +76,17 @@ table {
 <div class="panel">
 <table style="height: 25%; border: 1px solid gray; border-collapse: collapse;">
 <tbody>
-<tr class="data_row"> 
-<td class="data_row">Server IP</td>
-<td class="data_row">Station IP</td>
+<tr class="name_row"> 
+<td class="name_row">Server IP</td>
+<td class="name_row">Station IP</td>
 </tr>
 
 <tr class="data_row">
-<td class="data_row"><span>255.255.255.255</span></td>
-<td class="data_row"><span>255.255.255.255</span></td>
+<td class="data_row">{{server_ip}}</td>
+<td class="data_row">{{station_ip}}</td>
 </tr>
 
-<tr class="data_row"><td colspan=2 >Connected</td></tr>
+<tr class="data_row"><td colspan=2 >{{server_connection}}</td></tr>
 </tbody>
 </table>
 </div>
