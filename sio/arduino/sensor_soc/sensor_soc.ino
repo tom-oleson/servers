@@ -55,6 +55,7 @@ struct __eeprom_data {
 // no need to store in eeprom
 uint8_t mac[6] = { '\0' };
 char mac_address[18] = "00:00:00:00:00:00";
+char device_name[20] = "";
 
 int soil_pin = 0;
 Adafruit_SHT31 sht31 = Adafruit_SHT31();
@@ -349,6 +350,16 @@ bool init_wifi() {
     sprintf(mac_address,  "%02X:%02X:%02X:%02X:%02X:%02X",
             mac[0], mac[1], mac[2],
             mac[3], mac[4], mac[5]);
+
+    // this is a new device...
+    if(eeprom_data.sID[0] == '#') {
+        snprintf(eeprom_data.sID, sizeof(eeprom_data.sID),
+               "+" DEVICE_PREFIX "-%02X%02X%02X%02X%02X%02X",
+                mac[0], mac[1], mac[2],
+                mac[3], mac[4], mac[5]);
+    }
+
+    snprintf(device_name, sizeof(eeprom_data)-1, eeprom_data.sID+1);
     
     show_wifi_connected();
 
@@ -467,7 +478,7 @@ table {
 </style>
 </head>
 <body>
-<h1>ETOK-AP  ({{mac_address}})</h1>
+<h1>ETOK-AP  ({{device_name}})</h1>
 
 <div class="container">
 
@@ -528,24 +539,16 @@ size_t _strlcpy(char * dst, const char * src, size_t max) {
 void handleConfig() {
   Serial.println("handleConfig");
 
-      // get the template
-    String content = String(config_page);
-
-    content.replace("{{mac_address}}", String(mac_address));
-    content.replace("{{ssid}}", String(eeprom_data.ssid));
-    content.replace("{{ssid_password}}", String(eeprom_data.password));
-    content.replace("{{server_ip}}", String(eeprom_data.server_address));
-    content.replace("{{server_port}}", String(eeprom_data.server_port));
-    content.replace("{{result}}", result);
-    
-
   if(server.method() == HTTP_POST) {
     Serial.println("HTTP_POST");
 
     if(server.hasArg("CLEAR")) {
       result = "";
       rs.clear();
-      memset(&eeprom_data, 0, sizeof(eeprom_data));
+      eeprom_data.ssid[0] = '\0';
+      eeprom_data.password[0] = '\0';
+      eeprom_data.server_address[0] = '\0';
+      eeprom_data.server_port = 54000;
     }
     else if(server.hasArg("UPDATE")) {
 
@@ -570,10 +573,10 @@ void handleConfig() {
         
       result = "";
       rs.clear();
-      // show user we are working...
-    server.sendHeader("Location", "/config");
-    server.sendHeader("Cache-Control", "no-cache");
-    server.send(301);
+
+      server.sendHeader("Location", "/config");
+      server.sendHeader("Cache-Control", "no-cache");
+      server.send(301);
 
 
       if(init_wifi()) {
@@ -598,7 +601,7 @@ void handleConfig() {
     // get the template
     String content = String(config_page);
 
-    content.replace("{{mac_address}}", String(mac_address));
+    content.replace("{{device_name}}", String(device_name));
     content.replace("{{ssid}}", String(eeprom_data.ssid));
     content.replace("{{ssid_password}}", String(eeprom_data.password));
     content.replace("{{server_ip}}", String(eeprom_data.server_address));
