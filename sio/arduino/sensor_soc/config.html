@@ -1,6 +1,17 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="120">
+<title>ETOK-AP</title>
+<style>
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; }<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 html {
   -webkit-text-size-adjust: 100%;
@@ -21,7 +32,9 @@ table { width: 100%; text-align: center;}
 .result_panel { height: 40%; border: 1px solid gray;  }
 
 .input_name { height: 10%; padding-top: 5%;}
-.text_area { font-size:120%; border: none; /*border-collapse: collapse;*/}
+.text_area { font-size:110%; border: none; /*border-collapse: collapse;*/}
+
+.input_button { height: 65%; width: 100%; background-color:#007777; margin-top: 5%; }
 
 .result_panel, .panel, .input_panel { background-color: #353535; }
 .divider { height: 20px; }
@@ -32,7 +45,7 @@ table {
 </style>
 </head>
 <body>
-<h1>ETOK-AP  ({{mac_address}})</h1>
+<h1>ETOK-AP  ({{device_name}})</h1>
 
 <div class="container">
 
@@ -57,8 +70,8 @@ table {
 <td><input type='text' name='SERVER_PORT' placeholder='server_port' value='54000' value='{{server_port}}'></td>
 </tr>
 <tr>
-<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='CLEAR' value='Clear'></td>
-<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='UPDATE' value='Update'></td>
+<td> <input class="input_button" type='button' name='CLEAR' value='Clear'></td>
+<td> <input class="input_button" type='button' name='UPDATE' value='Update'></td>
 </tr>
 </tbody>
 </table>
@@ -67,15 +80,11 @@ table {
 
 <div class="divider"></div>
 
-
 <div class="result_panel">
 <textarea class="text_area">
 {{result}}    
 </textarea>
 </div>
-
-
-
 
 </div>
 

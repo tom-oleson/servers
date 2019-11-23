@@ -364,21 +364,9 @@ bool init_wifi() {
     show_wifi_connected();
 
     if((WiFi.status() != WL_CONNECTED) && eeprom_data.ssid[0]) {
-      //Serial.print(F("Attempting to connect to "));
-      //Serial.print(eeprom_data.ssid);
+
       x_print("Attempting to connect to ");
       x_print(eeprom_data.ssid);
-
-
-//    // setup unique hostname for this device
-//    WiFi.macAddress(mac_address);
-//    sprintf(hostname,  DEVICE_PREFIX "-%02x%02x%02x%02x%02x%02x",
-//            mac_address[0], mac_address[1], mac_address[2],
-//            mac_address[3], mac_address[4], mac_address[5]);
-   
-//    WiFi.disconnect();
-//    WiFi.setHostname(hostname);
-//    WiFi.mode(WIFI_STA);
     
     WiFi.begin(eeprom_data.ssid, eeprom_data.password, 0, NULL, true);
     WiFi.setHostname(hostname);
@@ -447,6 +435,17 @@ const char *config_page = R"(
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="120">
+<title>ETOK-AP</title>
+<style>
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; }<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 html {
   -webkit-text-size-adjust: 100%;
@@ -468,6 +467,8 @@ table { width: 100%; text-align: center;}
 
 .input_name { height: 10%; padding-top: 5%;}
 .text_area { font-size:110%; border: none; /*border-collapse: collapse;*/}
+
+.input_button { height: 65%; width: 100%; background-color:#007777; margin-top: 5%; }
 
 .result_panel, .panel, .input_panel { background-color: #353535; }
 .divider { height: 20px; }
@@ -503,8 +504,8 @@ table {
 <td><input type='text' name='SERVER_PORT' placeholder='server_port' value='54000' value='{{server_port}}'></td>
 </tr>
 <tr>
-<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='CLEAR' value='Clear'></td>
-<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='UPDATE' value='Update'></td>
+<td> <input class="input_button" type='submit' name='CLEAR' value='Clear'></td>
+<td> <input class="input_button" type='submit' name='UPDATE' value='Update'></td>
 </tr>
 </tbody>
 </table>
@@ -552,35 +553,40 @@ void handleConfig() {
     }
     else if(server.hasArg("UPDATE")) {
 
+      result = "";
+      rs.clear();
+
       __eeprom_data save_eeprom;
       memcpy(&save_eeprom, &eeprom_data, sizeof(save_eeprom));
 
+      // get form data
       String _ssid = server.arg("SSID");
       String _ssid_password = server.arg("PASSWORD");
       String _server_ip = server.arg("SERVER_IP");
       String _server_port = server.arg("SERVER_PORT");
 
-      Serial.println(_ssid);
-      Serial.println(_ssid_password);
-      Serial.println(_server_ip);
-      Serial.println(_server_port);
+      bool do_update = true;
 
-      // copy form data into our data structure
-      _strlcpy(eeprom_data.ssid, _ssid.c_str(), sizeof(eeprom_data.ssid));
-      _strlcpy(eeprom_data.password, _ssid_password.c_str(), sizeof(eeprom_data.password));
-      _strlcpy(eeprom_data.server_address, _server_ip.c_str(), sizeof(eeprom_data.server_address));
-      eeprom_data.server_port = atoi(_server_port.c_str());
-        
-      result = "";
-      rs.clear();
+      if(_ssid == "") { result += "Missing Network (SSID)\n"; do_update = false; }
+      if(_ssid_password == "") { result += "Missing Network Password\n"; do_update = false; }
+      if(_server_ip == "") { result += "Missing Server IP\n"; do_update = false; }
 
-      if(init_wifi()) {
-        // successful, update the EEPROM
-        update_eeprom();
-      }
-      else {
-        // error, restore previous data
-        memcpy(&eeprom_data, &save_eeprom, sizeof(eeprom_data));
+      if(do_update) {
+        // copy form data into our data structure
+        _strlcpy(eeprom_data.ssid, _ssid.c_str(), sizeof(eeprom_data.ssid));
+        _strlcpy(eeprom_data.password, _ssid_password.c_str(), sizeof(eeprom_data.password));
+        _strlcpy(eeprom_data.server_address, _server_ip.c_str(), sizeof(eeprom_data.server_address));
+        eeprom_data.server_port = atoi(_server_port.c_str());
+
+        if(init_wifi()) {
+          // successful, update the EEPROM
+          update_eeprom();
+        }
+        else {
+          // error, restore previous data
+          memcpy(&eeprom_data, &save_eeprom, sizeof(eeprom_data));
+          result = "There was a connection problem. Please check your settings.";
+        }
       }
     }
     // redirect/load the page
