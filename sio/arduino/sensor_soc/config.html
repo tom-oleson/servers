@@ -9,16 +9,22 @@ html {
 }
 body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; }
 h1 { width: 100%; background-color: #007777; color:white; font-size:130%; }
-input { height: 120%; width:100%; background-color: #353535;  color: white; font-size:100%; }
+input, textarea { height: 100%; width:100%; background-color: #353535;  color: white; font-size:100%; padding: 5px; }
 td { color: white; font-size:100%; }
-table {  width: 100%; height: 25%; background-color: #353535; text-align: center;}
 
-.input_name { height: 5%; padding-top: 5%;}
-.data_row, .name_row { font-size:100%; border: 1px solid gray; border: 1px solid gray; border-collapse: collapse;}
-.data_row { height: 40%; }
-.name_row { height: 10%; }
+table { width: 100%; text-align: center;}
+
 .container{ height:100%; }
-.panel {width: 100%;}
+
+.panel { padding-top: 5%; border: 1px solid gray; }
+.input_panel { border: 1px solid gray;  }
+.result_panel { height: 40%; border: 1px solid gray;  }
+
+.input_name { height: 10%; padding-top: 5%;}
+.text_area { font-size:120%; border: none; /*border-collapse: collapse;*/}
+
+.result_panel, .panel, .input_panel { background-color: #353535; }
+.divider { height: 20px; }
 table {
   table-layout: fixed;
 }
@@ -26,12 +32,14 @@ table {
 </style>
 </head>
 <body>
-<h1>ETOK-AP ({{mac_address}})</h1>
+<h1>ETOK-AP  ({{mac_address}})</h1>
+
 <div class="container">
-<div class="panel">
+
+<div class="input_panel">
 <form action='/config' method='POST'>
-<table>
-<tbody>
+<table >
+<tbody">
 <tr >
 <td class="input_name">Network (SSID)</td>
 <td class="input_name">Network Password</td>
@@ -49,47 +57,25 @@ table {
 <td><input type='text' name='SERVER_PORT' placeholder='server_port' value='54000' value='{{server_port}}'></td>
 </tr>
 <tr>
-<td colspan=2> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='SUBMIT' value='Update'></td>
+<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='CLEAR' value='Clear'></td>
+<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='UPDATE' value='Update'></td>
 </tr>
 </tbody>
 </table>
 </form>
 </div>
 
-<div class="panel">
-<table style="height: 25%; border: 1px solid gray; border-collapse: collapse;">
-<tbody>
-<tr class="name_row">
-    <td>AP Network IP</td>
-</tr>
-<tr class="data_row">
-    <td>{{ap_network_ip}}</td>
-</tr>
-<tr class="data_row">
-    <td>{{ap_connection}}</td>
-</tr>
-</tbody>
-</table>
-<div>
-<br>
+<div class="divider"></div>
 
-<div class="panel">
-<table style="height: 25%; border: 1px solid gray; border-collapse: collapse;">
-<tbody>
-<tr class="name_row"> 
-<td class="name_row">Server IP</td>
-<td class="name_row">Station IP</td>
-</tr>
 
-<tr class="data_row">
-<td class="data_row">{{server_ip}}</td>
-<td class="data_row">{{station_ip}}</td>
-</tr>
-
-<tr class="data_row"><td colspan=2 >{{server_connection}}</td></tr>
-</tbody>
-</table>
+<div class="result_panel">
+<textarea class="text_area">
+{{result}}    
+</textarea>
 </div>
+
+
+
 
 </div>
 

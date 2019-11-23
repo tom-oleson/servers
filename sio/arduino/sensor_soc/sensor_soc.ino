@@ -1,5 +1,6 @@
 #define ESP32
 
+
 /*
    Copyright (c) 2019, Tom Oleson <tom dot oleson at gmail dot com>
    All rights reserved.
@@ -55,6 +56,13 @@ struct __eeprom_data {
 uint8_t mac[6] = { '\0' };
 char mac_address[18] = "00:00:00:00:00:00";
 
+int soil_pin = 0;
+Adafruit_SHT31 sht31 = Adafruit_SHT31();
+Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
+
+String input;
+volatile unsigned long count = 0;
+
 #ifdef ESP32
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -65,241 +73,18 @@ const char *ap_ssid = "ETOK-AP";
 const char *ap_password = "administrator";
 char hostname[33] = "ETOK-STA";
 
-String ap_network_ip;
-String station_ip;
-String server_connection;
-String ap_connection;
+String result;
 
 WebServer server(80);
 WiFiClient client;
+bool wifi_out = false;
 
-
-// safe version of strncpy; always ensures string is null terminated
-size_t strlcpy(char * dst, const char * src, size_t max) {
-  size_t sz = 0;
-  while(sz < max - 1 && src[sz] != '\0'){
-    dst[sz] = src[sz];
-    sz++;
-  }
-  dst[sz] = '\0';
-  return sz;
-}
-
-const char *config_page = R"(
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-html {
-  -webkit-text-size-adjust: 100%;
-  -moz-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%;
-}
-body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; }
-h1 { width: 100%; background-color: #007777; color:white; font-size:130%; }
-input { height: 120%; width:100%; background-color: #353535;  color: white; font-size:100%; }
-td { color: white; font-size:100%; }
-table {  width: 100%; height: 25%; background-color: #353535; text-align: center;}
-
-.input_name { height: 5%; padding-top: 5%;}
-.data_row, .name_row { font-size:100%; border: 1px solid gray; border: 1px solid gray; border-collapse: collapse;}
-.data_row { height: 40%; }
-.name_row { height: 10%; }
-.container{ height:100%; }
-.panel {width: 100%;}
-table {
-  table-layout: fixed;
-}
-
-</style>
-</head>
-<body>
-<h1>ETOK-AP      (MAC: {{mac_address}})</h1>
-<div class="container">
-<div class="panel">
-<form action='/config' method='POST'>
-<table>
-<tbody>
-<tr >
-<td class="input_name">Network (SSID)</td>
-<td class="input_name">Network Password</td>
-</tr>
-<tr>
-<td><input type='text' name='SSID' placeholder='ssid' value='{{ssid}}'></td>
-<td><input type='password' name='PASSWORD' placeholder='password' value='{{ssid_password}}'></td>
-</tr>
-<tr>
-<td class="input_name">Server IP</td>
-<td class="input_name">Server Port</td>
-</tr>
-<tr>
-<td><input type='text' name='SERVER_IP' placeholder='server_ip' value='{{server_ip}}'></td>
-<td><input type='text' name='SERVER_PORT' placeholder='server_port' value='54000' value='{{server_port}}'></td>
-</tr>
-<tr>
-<td colspan=2> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='SUBMIT' value='Update'></td>
-</tr>
-</tbody>
-</table>
-</form>
-</div>
-
-<div class="panel">
-<table style="height: 25%; border: 1px solid gray; border-collapse: collapse;">
-<tbody>
-<tr class="name_row">
-    <td>AP Network IP</td>
-</tr>
-<tr class="data_row">
-    <td>{{ap_network_ip}}</td>
-</tr>
-<tr class="data_row">
-    <td>{{ap_connection}}</td>
-</tr>
-</tbody>
-</table>
-<div>
-<br>
-
-<div class="panel">
-<table style="height: 25%; border: 1px solid gray; border-collapse: collapse;">
-<tbody>
-<tr class="name_row"> 
-<td class="name_row">Server IP</td>
-<td class="name_row">Station IP</td>
-</tr>
-
-<tr class="data_row">
-<td class="data_row">{{server_ip}}</td>
-<td class="data_row">{{station_ip}}</td>
-</tr>
-
-<tr class="data_row"><td colspan=2 >{{server_connection}}</td></tr>
-</tbody>
-</table>
-</div>
-
-</div>
-
-</body>
-</html>
-)";
-
-// safe version of strncpy; always ensures string is null terminated
-size_t _strlcpy(char * dst, const char * src, size_t max) {
-  size_t sz = 0;
-  while(sz < max - 1 && src[sz] != '\0'){
-    dst[sz] = src[sz];
-    sz++;
-  }
-  dst[sz] = '\0';
-  return sz;
-}
-
-bool restart = false;
-
-void handleConfig() {
-  Serial.println("handleConfig");
-  String content = String(config_page);
-
-  if(restart) {
-    Serial.println("restart required");
-    return;
-  }
-
-  if(server.method() == HTTP_POST) {
-
-    __eeprom_data save_eeprom;
-    memcpy(&save_eeprom, &eeprom_data, sizeof(save_eeprom));
-
-    // save current status strings
-//    String _ap_connection = _ap_connection;
-//    String _server_connection = server_connection;
-//    String _station_ip = station_ip;
-//    String _ap_network_ip = ap_network_ip;
-
-    String _ssid = server.arg("SSID");
-    String _ssid_password = server.arg("PASSWORD");
-    String _server_ip = server.arg("SERVER_IP");
-    String _server_port = server.arg("SERVER_PORT");
-
-    Serial.println(_ssid);
-    Serial.println(_ssid_password);
-    Serial.println(_server_ip);
-    Serial.println(_server_port);
-
-    _strlcpy(eeprom_data.ssid, _ssid.c_str(), sizeof(eeprom_data.ssid));
-    _strlcpy(eeprom_data.password, _ssid_password.c_str(), sizeof(eeprom_data.password));
-    _strlcpy(eeprom_data.server_address, _server_ip.c_str(), sizeof(eeprom_data.server_address));
-    eeprom_data.server_port = atoi(_server_port.c_str());
-      
-    //wifi_ap_mode_setup();
-    if(init_wifi(true)) {
-      // settings worked, so update the EEPROM
-      update_eeprom();
-    }
-    else {
-      // restore previous data
-      memcpy(&eeprom_data, &save_eeprom, sizeof(eeprom_data));
-    }
-    server.sendHeader("Location", "/config");
-    server.sendHeader("Cache-Control", "no-cache");
-    server.send(301);
-
-  }
-
-  content.replace("{{mac_address}}", String(mac_address));
-  content.replace("{{ssid}}", String(eeprom_data.ssid));
-  content.replace("{{ssid_password}}", String(eeprom_data.password));
-  content.replace("{{server_ip}}", String(eeprom_data.server_address));
-  content.replace("{{server_port}}", String(eeprom_data.server_port));
-  content.replace("{{ap_network_ip}}", ap_network_ip);
-  content.replace("{{ap_connection}}", ap_connection);
-  content.replace("{{station_ip}}", station_ip);
-  content.replace("{{server_connection}}", server_connection);
-  
-  server.send(200, "text/html", content);
-}
-
-void handleRoot() {
-  Serial.println("handleRoot");
-  server.sendHeader("Location", "/config");
-  server.sendHeader("Cache-Control", "no-cache");
-  server.send(301);
-}
-
-void wifi_ap_mode_setup() {
-
-  Serial.println();
-  Serial.println("Configuring Access Point...");
-
-  WiFi.disconnect();
-  WiFi.setHostname(ap_ssid);
-  WiFi.softAPsetHostname(ap_ssid);
-  WiFi.mode(WIFI_MODE_APSTA);
-  WiFi.softAP(ap_ssid, ap_password);    
-  
-  IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
-  
-  /// setup web server end points here ///
-  server.on("/", handleRoot);
-  server.on("/config", handleConfig);
-
-  server.begin();
-
-  Serial.println("HTTP server started");
-}
+// ESP32 implementation of this macro is broken, treat as
+// normal strings...
+#undef F
+#define F(s) (s)
 
 #endif
-
-int soil_pin = 0;
-Adafruit_SHT31 sht31 = Adafruit_SHT31();
-Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
-
-String input;
-volatile unsigned long count = 0;
 
 float temperature = 0;
 float humidity = 0;
@@ -315,9 +100,8 @@ bool sht31_found = false;
 bool tsl_found = false;
 volatile bool soil_found = false;
 
-/////////////////// output targets //////////////////////////
 
-#ifdef ESP32
+/////////////////////// cm_buffer /////////////////////////////
 struct cm_buffer {
 
   size_t len;             /* bytes written to buffer */
@@ -340,7 +124,7 @@ struct cm_buffer {
 
   inline void clear() {
     len = 0;
-    memset(buf, 0, sz);
+    buf[len] = '\0';
   }
 
   inline void append(char ch) {
@@ -398,22 +182,23 @@ struct cm_buffer {
     append(s.c_str());
   }
 
+  inline void append(const String &s) {
+    append(s.c_str());
+  }
+
   inline void append(const __FlashStringHelper *ifsh) {
     append(reinterpret_cast<const char *>(ifsh));
   }
 };
 
-// provide a buffer we can control since ESP32 API is brain dead in this area!
-char tx_buf[512];
-cm_buffer tx_buffer(tx_buf, sizeof(tx_buf));
 
-bool wifi_out = false;
-#undef F
-#define F(s) (s)
-
-#endif  //ESP32
+////////////////////////// logger ///////////////////////////////
 
 #ifdef ESP32
+// provide a buffer we can control since ESP32 API is brain dead in this area!
+char tx_buf[1024];
+cm_buffer tx_buffer(tx_buf, sizeof(tx_buf));
+
 inline void con_flush() {
   if(wifi_out) {
     client.print(tx_buf);
@@ -452,8 +237,7 @@ inline void con_flush() {
 #define log_info(s) 
 #define log_warn(s)
 #define log_warn(s)
-
-#endif
+#endif  //TOK_LOGGER
 
 ////////////////////////// EEPROM ///////////////////////////////
 
@@ -504,18 +288,21 @@ void vortex_watch() {
 //  strncat(buf, eeprom_data.sID+1, sizeof(eeprom_data.sID)-1);
 //  con_println(buf);
 }
-#endif
+#endif // #define ESP32
 
 
-////////////////////////// WiFi ///////////////////////////////
+////////////////////////// WiFi/WebServer ///////////////////////////////
 
 #ifdef ESP32
+
 void wifi_close_connection() {
   client.stop();
   wifi_out = false;
 }
 
 void check_wifi_connection() {
+
+  //Serial.println("check_wifi_connection");
 
   // if no wifi, re-initialize
   if (WiFi.status() != WL_CONNECTED) {
@@ -528,7 +315,7 @@ void check_wifi_connection() {
   // if we lost server connection, attempt reconnect
   for(int timeout = 6; !client.connected() && timeout > 0; timeout--) {
     if(client.connect(eeprom_data.server_address, eeprom_data.server_port)) return;
-    delay(10000);
+    delay(1000);
   }
 
   // if we are not connected to the server now, re-initialize
@@ -539,7 +326,23 @@ void check_wifi_connection() {
   }
 }
 
-bool init_wifi(bool ap_verifying) {
+// collect results of init_wifi
+char rs_buf[1048];
+cm_buffer rs(rs_buf, sizeof(rs_buf));
+
+#define x_print(ss) Serial.print((ss)); rs.append((ss)); result.concat((ss))
+#define x_println(ss)  Serial.println((ss)); rs.append((ss)); rs.append("\n"); result.concat((ss)); result.concat("\n"); rs.clear()
+
+void show_wifi_connected() {
+    if (WiFi.status() == WL_CONNECTED) {
+      x_print("WiFi connected as local IP address: ");
+      x_println(WiFi.localIP().toString()); 
+    }
+}
+
+bool init_wifi() {
+
+    Serial.println("init_wifi");
 
     // setup unique hostname for this device
     WiFi.macAddress(mac);
@@ -547,10 +350,14 @@ bool init_wifi(bool ap_verifying) {
             mac[0], mac[1], mac[2],
             mac[3], mac[4], mac[5]);
     
-retry:
-  if((WiFi.status() != WL_CONNECTED) && eeprom_data.ssid[0]) {
-    Serial.print(F("Attempting to connect to "));
-    Serial.print(eeprom_data.ssid);
+    show_wifi_connected();
+
+    if((WiFi.status() != WL_CONNECTED) && eeprom_data.ssid[0]) {
+      //Serial.print(F("Attempting to connect to "));
+      //Serial.print(eeprom_data.ssid);
+      x_print("Attempting to connect to ");
+      x_print(eeprom_data.ssid);
+
 
 //    // setup unique hostname for this device
 //    WiFi.macAddress(mac_address);
@@ -568,56 +375,39 @@ retry:
     int timeout = 10; // seconds
     while (WiFi.status() != WL_CONNECTED && --timeout > 0) {
       delay(500);
-      Serial.print(F("."));
+      x_print(".");
       delay(500);
     }
-    Serial.println();
+    x_println("");
 
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.print(F("WiFi connected as local IP address: "));
-      Serial.println(WiFi.localIP());
-      station_ip = WiFi.localIP().toString();
-      ap_network_ip = WiFi.networkID().toString();
-
-      if(station_ip == "0.0.0.0") station_ip = "Restart Device";
-      if(ap_network_ip == "0.0.0.0") ap_network_ip = "Restart Device";
-            
+      show_wifi_connected();
     }
     else {
-      Serial.println(F("Timed out. Check SSID/password."));
-      ap_connection = "Timed out. Check SSID/password.";
-      //goto retry;
-      //ESP.restart();  // try this later
+      x_println("Timed out. Check SSID/password.");
       return false;
     }
     WiFi.setHostname(hostname);
-    ap_connection = "Connection to network successful";
 
   } // !WL_CONNECTED
-  else {
-    if(!eeprom_data.ssid[0]) {
-      ap_connection = "Missing data?";
-      return false;
-    }
-  }
   
   if (eeprom_data.server_address[0] && eeprom_data.server_port > 0) {
-    Serial.print(F("Connecting to "));
-    Serial.print(eeprom_data.server_address);
-    delay(1000);
-    
+    x_print("Connecting to ");
+    x_print(eeprom_data.server_address);
+    x_print(":");
+    x_println(eeprom_data.server_port);
+    x_println("");
+        
     if(!client.connect(eeprom_data.server_address, eeprom_data.server_port)) {
-      Serial.println(F("Connect failed. Check Server IP."));
-      server_connection = "Connect failed. Check Server IP.";
-      //goto retry;
+      x_println("Connect failed. Check Server IP and Port.");
       return false;
     }
-    
+
     // missing API in ESP32!  No way to control flush on write!
     //client.setDefaultSync(false);
-    Serial.println(F("Connection successful"));
+    x_println("Connection successful");
     wifi_out = true;
-    server_connection = "Connection to server successful";
+
     char buf[60];
     snprintf(buf, sizeof(buf), "Hello from: %s", hostname);
     log_info(buf);
@@ -627,19 +417,232 @@ retry:
 #endif
     return true;
   }
-  else {
-    if(eeprom_data.server_address[0] && eeprom_data.server_port < 0) {
-      server_connection = "Missing data?";
-    }
-  }
 
   return false;
 }
 
+// safe version of strncpy; always ensures string is null terminated
+size_t strlcpy(char * dst, const char * src, size_t max) {
+  size_t sz = 0;
+  while(sz < max - 1 && src[sz] != '\0'){
+    dst[sz] = src[sz];
+    sz++;
+  }
+  dst[sz] = '\0';
+  return sz;
+}
 
-bool init_wifi() { return init_wifi(false); }
+const char *config_page = R"(
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; }
+h1 { width: 100%; background-color: #007777; color:white; font-size:130%; }
+input, textarea { height: 100%; width:100%; background-color: #353535;  color: white; font-size:100%; padding: 5px; }
+td { color: white; font-size:100%; }
 
-#endif
+table { width: 100%; text-align: center;}
+
+.container{ height:100%; }
+
+.panel { padding-top: 5%; border: 1px solid gray; }
+.input_panel { border: 1px solid gray;  }
+.result_panel { height: 40%; border: 1px solid gray;  }
+
+.input_name { height: 10%; padding-top: 5%;}
+.text_area { font-size:120%; border: none; /*border-collapse: collapse;*/}
+
+.result_panel, .panel, .input_panel { background-color: #353535; }
+.divider { height: 20px; }
+table {
+  table-layout: fixed;
+}
+
+</style>
+</head>
+<body>
+<h1>ETOK-AP  ({{mac_address}})</h1>
+
+<div class="container">
+
+<div class="input_panel">
+<form action='/config' method='POST'>
+<table >
+<tbody">
+<tr >
+<td class="input_name">Network (SSID)</td>
+<td class="input_name">Network Password</td>
+</tr>
+<tr>
+<td><input type='text' name='SSID' placeholder='ssid' value='{{ssid}}'></td>
+<td><input type='password' name='PASSWORD' placeholder='password' value='{{ssid_password}}'></td>
+</tr>
+<tr>
+<td class="input_name">Server IP</td>
+<td class="input_name">Server Port</td>
+</tr>
+<tr>
+<td><input type='text' name='SERVER_IP' placeholder='server_ip' value='{{server_ip}}'></td>
+<td><input type='text' name='SERVER_PORT' placeholder='server_port' value='54000' value='{{server_port}}'></td>
+</tr>
+<tr>
+<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='CLEAR' value='Clear'></td>
+<td> <input style="height: 65%; width: 100%; background-color:#007777; margin-top: 5%;" type='submit' name='UPDATE' value='Update'></td>
+</tr>
+</tbody>
+</table>
+</form>
+</div>
+
+<div class="divider"></div>
+
+<div class="result_panel">
+<textarea class="text_area">
+{{result}}    
+</textarea>
+</div>
+
+</div>
+
+</body>
+</html>
+)";
+
+// safe version of strncpy; always ensures string is null terminated
+size_t _strlcpy(char * dst, const char * src, size_t max) {
+  size_t sz = 0;
+  while(sz < max - 1 && src[sz] != '\0'){
+    dst[sz] = src[sz];
+    sz++;
+  }
+  dst[sz] = '\0';
+  return sz;
+}
+
+void handleConfig() {
+  Serial.println("handleConfig");
+
+      // get the template
+    String content = String(config_page);
+
+    content.replace("{{mac_address}}", String(mac_address));
+    content.replace("{{ssid}}", String(eeprom_data.ssid));
+    content.replace("{{ssid_password}}", String(eeprom_data.password));
+    content.replace("{{server_ip}}", String(eeprom_data.server_address));
+    content.replace("{{server_port}}", String(eeprom_data.server_port));
+    content.replace("{{result}}", result);
+    
+
+  if(server.method() == HTTP_POST) {
+    Serial.println("HTTP_POST");
+
+    if(server.hasArg("CLEAR")) {
+      result = "";
+      rs.clear();
+      memset(&eeprom_data, 0, sizeof(eeprom_data));
+    }
+    else if(server.hasArg("UPDATE")) {
+
+      __eeprom_data save_eeprom;
+      memcpy(&save_eeprom, &eeprom_data, sizeof(save_eeprom));
+
+      String _ssid = server.arg("SSID");
+      String _ssid_password = server.arg("PASSWORD");
+      String _server_ip = server.arg("SERVER_IP");
+      String _server_port = server.arg("SERVER_PORT");
+
+      Serial.println(_ssid);
+      Serial.println(_ssid_password);
+      Serial.println(_server_ip);
+      Serial.println(_server_port);
+
+      // copy form data into our data structure
+      _strlcpy(eeprom_data.ssid, _ssid.c_str(), sizeof(eeprom_data.ssid));
+      _strlcpy(eeprom_data.password, _ssid_password.c_str(), sizeof(eeprom_data.password));
+      _strlcpy(eeprom_data.server_address, _server_ip.c_str(), sizeof(eeprom_data.server_address));
+      eeprom_data.server_port = atoi(_server_port.c_str());
+        
+      result = "";
+      rs.clear();
+      // show user we are working...
+    server.sendHeader("Location", "/config");
+    server.sendHeader("Cache-Control", "no-cache");
+    server.send(301);
+
+
+      if(init_wifi()) {
+        // successful, update the EEPROM
+        update_eeprom();
+      }
+      else {
+        // error, restore previous data
+        memcpy(&eeprom_data, &save_eeprom, sizeof(eeprom_data));
+      }
+    }
+
+    // // reload the page
+    // server.sendHeader("Location", "/config");
+    // server.sendHeader("Cache-Control", "no-cache");
+    // server.send(301);
+    return;
+  }
+  else if(server.method() == HTTP_GET) {
+    Serial.println("HTTP_GET");
+
+    // get the template
+    String content = String(config_page);
+
+    content.replace("{{mac_address}}", String(mac_address));
+    content.replace("{{ssid}}", String(eeprom_data.ssid));
+    content.replace("{{ssid_password}}", String(eeprom_data.password));
+    content.replace("{{server_ip}}", String(eeprom_data.server_address));
+    content.replace("{{server_port}}", String(eeprom_data.server_port));
+    content.replace("{{result}}", result);
+    
+    server.send(200, "text/html", content);
+  }
+}
+
+void handleRoot() {
+  Serial.println("handleRoot");
+  server.sendHeader("Location", "/config");
+  server.sendHeader("Cache-Control", "no-cache");
+  server.send(301);
+}
+
+void wifi_ap_mode_setup() {
+
+  Serial.println();
+  x_println("Configuring Access Point...");
+
+  WiFi.disconnect();
+  WiFi.setHostname(ap_ssid);
+  WiFi.softAPsetHostname(ap_ssid);
+  WiFi.mode(WIFI_MODE_APSTA);
+  WiFi.softAP(ap_ssid, ap_password);    
+  
+  IPAddress myIP = WiFi.softAPIP();
+  x_print("AP IP address: ");
+  x_println(myIP.toString());
+  
+  /// setup web server end points here ///
+  server.on("/", handleRoot);
+  server.on("/config", handleConfig);
+
+  server.begin();
+
+  x_println("HTTP server started");
+}
+
+#endif // #define ESP32
+
+///////////////////////////// SOIL ///////////////////////////////////
 
 void init_soil() {
   soil_found = false;
@@ -690,6 +693,8 @@ void init_ds18b20() {
 }
 #endif
 
+////////////////////////// SHT31 ///////////////////////////////////
+
 void init_sht31() {
 
   sht31_found = sht31.begin(0x44);
@@ -698,6 +703,8 @@ void init_sht31() {
     log_info(F("No SHT31 sensor found"));
   }
 }
+
+////////////////////////// TSL2561 /////////////////////////////////
 
 void init_tsl2561() {
 
@@ -737,6 +744,7 @@ void init_tsl2561() {
 
   }
 }
+
 //////////////////////////////////// setup ////////////////////////////////////
 
 void setup() {
