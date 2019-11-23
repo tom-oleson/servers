@@ -360,6 +360,7 @@ bool init_wifi() {
     }
 
     snprintf(device_name, sizeof(eeprom_data)-1, eeprom_data.sID+1);
+    WiFi.setHostname(device_name);   // nobody knows where this works
     
     show_wifi_connected();
 
@@ -367,26 +368,29 @@ bool init_wifi() {
 
       x_print("Attempting to connect to ");
       x_print(eeprom_data.ssid);
-    
-    WiFi.begin(eeprom_data.ssid, eeprom_data.password, 0, NULL, true);
-    WiFi.setHostname(hostname);
+      
+      WiFi.setHostname(device_name);   // nobody knows where this works
 
-    int timeout = 10; // seconds
-    while (WiFi.status() != WL_CONNECTED && --timeout > 0) {
-      delay(500);
-      x_print(".");
-      delay(500);
-    }
-    x_println("");
+      // attempt WiFi connect
+      WiFi.begin(eeprom_data.ssid, eeprom_data.password, 0, NULL, true);
+      WiFi.setHostname(device_name);   // nobody knows where this works
 
-    if (WiFi.status() == WL_CONNECTED) {
-      show_wifi_connected();
-    }
-    else {
-      x_println("Timed out. Check SSID/password.");
-      return false;
-    }
-    WiFi.setHostname(hostname);
+      int timeout = 10; // seconds
+      while (WiFi.status() != WL_CONNECTED && --timeout > 0) {
+        delay(500);
+        x_print(".");
+        delay(500);
+      }
+      x_println("");
+
+      if (WiFi.status() == WL_CONNECTED) {
+        show_wifi_connected();
+      }
+      else {
+        x_println("Timed out. Check SSID/password.");
+        return false;
+      }
+      WiFi.setHostname(device_name);   // nobody knows where this works
 
   } // !WL_CONNECTED
   
