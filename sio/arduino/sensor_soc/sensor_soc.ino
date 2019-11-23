@@ -467,7 +467,7 @@ table { width: 100%; text-align: center;}
 .result_panel { height: 40%; border: 1px solid gray;  }
 
 .input_name { height: 10%; padding-top: 5%;}
-.text_area { font-size:120%; border: none; /*border-collapse: collapse;*/}
+.text_area { font-size:110%; border: none; /*border-collapse: collapse;*/}
 
 .result_panel, .panel, .input_panel { background-color: #353535; }
 .divider { height: 20px; }
@@ -574,11 +574,6 @@ void handleConfig() {
       result = "";
       rs.clear();
 
-      server.sendHeader("Location", "/config");
-      server.sendHeader("Cache-Control", "no-cache");
-      server.send(301);
-
-
       if(init_wifi()) {
         // successful, update the EEPROM
         update_eeprom();
@@ -588,11 +583,10 @@ void handleConfig() {
         memcpy(&eeprom_data, &save_eeprom, sizeof(eeprom_data));
       }
     }
-
-    // // reload the page
-    // server.sendHeader("Location", "/config");
-    // server.sendHeader("Cache-Control", "no-cache");
-    // server.send(301);
+    // redirect/load the page
+    server.sendHeader("Location", "/config");
+    server.sendHeader("Cache-Control", "no-cache");
+    server.send(301);
     return;
   }
   else if(server.method() == HTTP_GET) {
