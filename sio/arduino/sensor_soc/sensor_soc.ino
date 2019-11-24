@@ -1,6 +1,4 @@
 #define ESP32
-
-
 /*
    Copyright (c) 2019, Tom Oleson <tom dot oleson at gmail dot com>
    All rights reserved.
@@ -298,14 +296,24 @@ void vortex_watch() {
 
 #ifdef ESP32
 
+void wifi_ap_mode_setup();
+
 void wifi_close_connection() {
+  //Serial.println("wifi_close_connection");
   client.stop();
+  //server.stop();
   wifi_out = false;
+  //wifi_ap_mode_setup();
 }
 
 void check_wifi_connection() {
 
-  if(hold_conn_checks) return;
+  //Serial.println("check_wifi_connection");
+
+  if(hold_conn_checks) {
+    //Serial.println("hold_conn_checks");
+    return;
+  }
 
   //Serial.println("check_wifi_connection");
 
@@ -316,10 +324,19 @@ void check_wifi_connection() {
     return;
   }
 
-  // ESP32 API fails to expose the reconnect method in WiFiClient! WTF?!!
-  // if we lost server connection, attempt reconnect
+  //ESP32 API fails to expose the reconnect method in WiFiClient! WTF?!!
+  //if we lost server connection, attempt reconnect
   for(int timeout = 6; !client.connected() && timeout > 0; timeout--) {
-    if(client.connect(eeprom_data.server_address, eeprom_data.server_port)) return;
+    if(client.connect(eeprom_data.server_address, eeprom_data.server_port)) {
+      // resume network outptu
+      wifi_out = true;
+
+#ifdef VORTEX_WATCH
+      vortex_watch();
+#endif
+      
+      return;
+    }
     delay(1000);
   }
 
@@ -327,7 +344,6 @@ void check_wifi_connection() {
   if(!client.connected()) {
     wifi_close_connection();
     init_wifi();
-    return;
   }
 }
 
@@ -364,20 +380,17 @@ bool init_wifi() {
     }
 
     snprintf(device_name, sizeof(eeprom_data)-1, eeprom_data.sID+1);
-    WiFi.setHostname(device_name);   // nobody knows where this works
     
     show_wifi_connected();
-
+retry:
     if((WiFi.status() != WL_CONNECTED) && eeprom_data.ssid[0]) {
 
       x_print("Attempting to connect to ");
       x_print(eeprom_data.ssid);
-      
-      WiFi.setHostname(device_name);   // nobody knows where this works
 
       // attempt WiFi connect
       WiFi.begin(eeprom_data.ssid, eeprom_data.password, 0, NULL, true);
-      WiFi.setHostname(device_name);   // nobody knows where this works
+      WiFi.setHostname(hostname);
 
       int timeout = 10; // seconds
       while (WiFi.status() != WL_CONNECTED && --timeout > 0) {
@@ -1061,7 +1074,7 @@ void loop() {
   // WiFiClient ap_client = server.client();
   // if(ap_client.connected()) {
   //   // we are currently in AP mode
-  //   //return;
+  //   return;
   // }
   
   ////////////////////// clock /////////////////////
@@ -1133,7 +1146,10 @@ void loop() {
   if ((count % interval) == 0) {
 
 #ifdef ESP32
-    if (wifi_out) check_wifi_connection();
+    //if (wifi_out) check_wifi_connection();
+    //WiFiClient ap_client = server.client();
+    //if(!ap_client.connected()) check_wifi_connection();
+    check_wifi_connection();
 #endif
 
     con_print(eeprom_data.sID);
