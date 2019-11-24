@@ -334,7 +334,7 @@ void check_wifi_connection() {
 #ifdef VORTEX_WATCH
       vortex_watch();
 #endif
-      
+
       return;
     }
     delay(1000);
@@ -368,6 +368,11 @@ bool init_wifi() {
     // setup unique hostname for this device
     WiFi.macAddress(mac);
     sprintf(mac_address,  "%02X:%02X:%02X:%02X:%02X:%02X",
+            mac[0], mac[1], mac[2],
+            mac[3], mac[4], mac[5]);
+
+    snprintf(hostname, sizeof(hostname),
+           "+" DEVICE_PREFIX "-%02X%02X%02X%02X%02X%02X",
             mac[0], mac[1], mac[2],
             mac[3], mac[4], mac[5]);
 
