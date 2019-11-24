@@ -282,6 +282,10 @@ void vortex_watch() {
   String name = String(eeprom_data.sID+1);
   String s = "*" + name + "-notify #$" + name;
   con_println(s);
+
+  // broadcast name
+  s = "+broadcast {\"name\":\""+name+"\"}";
+  con_println(s);
   
 //  strcpy(buf, "*");
 //  strncat(buf, eeprom_data.sID+1, sizeof(eeprom_data.sID)-1);
@@ -330,6 +334,10 @@ void check_wifi_connection() {
     if(client.connect(eeprom_data.server_address, eeprom_data.server_port)) {
       // resume network outptu
       wifi_out = true;
+
+      char buf[60];
+      snprintf(buf, sizeof(buf), "reconnected", hostname);
+      log_info(buf);
 
 #ifdef VORTEX_WATCH
       vortex_watch();
@@ -434,7 +442,7 @@ retry:
     wifi_out = true;
 
     char buf[60];
-    snprintf(buf, sizeof(buf), "Hello from: %s", hostname);
+    snprintf(buf, sizeof(buf), "connected", hostname);
     log_info(buf);
 
 #ifdef VORTEX_WATCH
