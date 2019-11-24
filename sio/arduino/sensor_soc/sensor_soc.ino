@@ -101,6 +101,8 @@ bool sht31_found = false;
 bool tsl_found = false;
 volatile bool soil_found = false;
 
+volatile bool hold_conn_checks = false;
+void evaluate(String &str, bool safe_source);
 
 /////////////////////// cm_buffer /////////////////////////////
 struct cm_buffer {
@@ -303,6 +305,8 @@ void wifi_close_connection() {
 
 void check_wifi_connection() {
 
+  if(hold_conn_checks) return;
+
   //Serial.println("check_wifi_connection");
 
   // if no wifi, re-initialize
@@ -401,7 +405,7 @@ bool init_wifi() {
     x_println(eeprom_data.server_port);
     x_println("");
         
-    if(!client.connect(eeprom_data.server_address, eeprom_data.server_port)) {
+    if(!client.connected() && !client.connect(eeprom_data.server_address, eeprom_data.server_port)) {
       x_println("Connect failed. Check Server IP and Port.");
       return false;
     }
@@ -530,6 +534,11 @@ table {
 </html>
 )";
 
+
+void clear_result() {
+  result = "";
+  rs.clear();
+}
 // safe version of strncpy; always ensures string is null terminated
 size_t _strlcpy(char * dst, const char * src, size_t max) {
   size_t sz = 0;
@@ -543,22 +552,21 @@ size_t _strlcpy(char * dst, const char * src, size_t max) {
 
 void handleConfig() {
   Serial.println("handleConfig");
+  hold_conn_checks = false;
 
   if(server.method() == HTTP_POST) {
     Serial.println("HTTP_POST");
 
     if(server.hasArg("CLEAR")) {
-      result = "";
-      rs.clear();
+
+      clear_result();
+
       eeprom_data.ssid[0] = '\0';
       eeprom_data.password[0] = '\0';
       eeprom_data.server_address[0] = '\0';
       eeprom_data.server_port = 54000;
     }
     else if(server.hasArg("UPDATE")) {
-
-      result = "";
-      rs.clear();
 
       __eeprom_data save_eeprom;
       memcpy(&save_eeprom, &eeprom_data, sizeof(save_eeprom));
@@ -571,9 +579,16 @@ void handleConfig() {
 
       bool do_update = true;
 
-      if(_ssid == "") { result += "Missing Network (SSID)\n"; do_update = false; }
-      if(_ssid_password == "") { result += "Missing Network Password\n"; do_update = false; }
-      if(_server_ip == "") { result += "Missing Server IP\n"; do_update = false; }
+      if(_ssid[0] == '$') {
+        do_update = false;
+        hold_conn_checks = true;
+        evaluate(_ssid, false);
+      }
+      else {
+        if(_ssid == "") { result += "Missing Network (SSID)\n"; do_update = false; }
+        if(_ssid_password == "") { result += "Missing Network Password\n"; do_update = false; }
+        if(_server_ip == "") { result += "Missing Server IP\n"; do_update = false; }
+      }
 
       if(do_update) {
         // copy form data into our data structure
@@ -581,6 +596,8 @@ void handleConfig() {
         _strlcpy(eeprom_data.password, _ssid_password.c_str(), sizeof(eeprom_data.password));
         _strlcpy(eeprom_data.server_address, _server_ip.c_str(), sizeof(eeprom_data.server_address));
         eeprom_data.server_port = atoi(_server_port.c_str());
+
+        clear_result();
 
         if(init_wifi()) {
           // successful, update the EEPROM
@@ -613,6 +630,8 @@ void handleConfig() {
     content.replace("{{result}}", result);
     
     server.send(200, "text/html", content);
+
+    clear_result();
   }
 }
 
@@ -648,6 +667,35 @@ void wifi_ap_mode_setup() {
 }
 
 #endif // #define ESP32
+
+
+void echo_sensors() {
+
+#ifdef ESP32
+  // out to web client
+
+  x_print("\ntime: "); x_println(count);
+  x_print("temp: "); x_println(temperature);
+  x_print("hum: "); x_println(humidity);
+  x_print("lux: "); x_println(lux);
+  x_print("bb_lum: "); x_println(bb_lum);
+  x_print("ir_lum: "); x_println(ir_lum);
+  x_print("soil: "); x_println(soil_moisture);
+  x_print("ds_temp: "); x_println(ds_temperature);
+#endif  
+  
+  char buf[60];
+
+  // out to server...
+  snprintf(buf, sizeof(buf), "\ntime: %lu", count); log_info(buf);
+  snprintf(buf, sizeof(buf), "temp: %f", temperature); log_info(buf);
+  snprintf(buf, sizeof(buf), "hum: %f", humidity); log_info(buf);
+  snprintf(buf, sizeof(buf), "lux: %u", lux); log_info(buf);
+  snprintf(buf, sizeof(buf), "bb_lum: %u", bb_lum); log_info(buf);
+  snprintf(buf, sizeof(buf), "ir_lum: %u", ir_lum); log_info(buf);
+  snprintf(buf, sizeof(buf), "soil: %d", soil_moisture); log_info(buf);
+  snprintf(buf, sizeof(buf), "ds_temp: %f", ds_temperature); log_info(buf);
+}
 
 ///////////////////////////// SOIL ///////////////////////////////////
 
@@ -895,6 +943,11 @@ void evaluate(String &str, bool safe_source) {
     interval = str.substring(1).toInt();
     log_info(str.c_str());
   }
+  else if (str[0] == 'E') {
+    // echo sensor data
+    //E
+    echo_sensors();
+  }
   else if (str[0] == 'N') {
     // name string
     // N+arduino001
@@ -902,9 +955,16 @@ void evaluate(String &str, bool safe_source) {
     update_eeprom();
     log_info(str.c_str());
     
-    #ifdef VORTEX_WATCH
-    vortex_watch();
-    #endif
+    // #ifdef VORTEX_WATCH
+    // vortex_watch();
+    // #endif
+#ifdef ESP32
+    if (wifi_out) {
+        wifi_close_connection();
+    }
+    init_wifi();
+#endif
+
   }
 #ifdef VORTEX_WATCH
   else if(str[0] == 'V') {
@@ -996,11 +1056,13 @@ void loop() {
 
   // check the access point for a client
   server.handleClient();
-  WiFiClient ap_client = server.client();
-  if(ap_client.connected()) {
-    // we are currently in AP mode
-    return;
-  }
+
+  // doing this causes the web client timeout
+  // WiFiClient ap_client = server.client();
+  // if(ap_client.connected()) {
+  //   // we are currently in AP mode
+  //   //return;
+  // }
   
   ////////////////////// clock /////////////////////
 
