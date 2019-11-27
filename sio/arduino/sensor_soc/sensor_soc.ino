@@ -480,6 +480,11 @@ html {
 body { background-color:black; color: white; font-family: Arial, Helvetica, sans-serif; }<html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-title" content="ETOK-AP">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes"> 
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <style>
 html {
   -webkit-text-size-adjust: 100%;
@@ -538,8 +543,8 @@ table {
 <td><input type='text' name='SERVER_PORT' placeholder='server_port' value='54000' value='{{server_port}}'></td>
 </tr>
 <tr>
-<td> <input class="input_button" type='submit' name='CLEAR' value='Clear'></td>
-<td> <input class="input_button" type='submit' name='UPDATE' value='Update'></td>
+<td> <input class="input_button" type='submit' name='CLEAR' value='CLEAR SSID'></td>
+<td> <input class="input_button" type='submit' name='UPDATE' value='UPDATE'></td>
 </tr>
 </tbody>
 </table>
@@ -589,10 +594,12 @@ void handleConfig() {
 
       eeprom_data.ssid[0] = '\0';
       eeprom_data.password[0] = '\0';
-      eeprom_data.server_address[0] = '\0';
-      eeprom_data.server_port = 54000;
+      //eeprom_data.server_address[0] = '\0';
+      //eeprom_data.server_port = 54000;
     }
     else if(server.hasArg("UPDATE")) {
+
+      clear_result();
 
       __eeprom_data save_eeprom;
       memcpy(&save_eeprom, &eeprom_data, sizeof(save_eeprom));
@@ -657,7 +664,8 @@ void handleConfig() {
     
     server.send(200, "text/html", content);
 
-    clear_result();
+    if(result.length() > 2048)
+      clear_result();
   }
 }
 
@@ -1080,15 +1088,9 @@ void process_config_input(String &s, bool safe_source) {
 
 void loop() {
 
-  // check the access point for a client
+#ifdef ESP32  
   server.handleClient();
-
-  // doing this causes the web client timeout
-  // WiFiClient ap_client = server.client();
-  // if(ap_client.connected()) {
-  //   // we are currently in AP mode
-  //   return;
-  // }
+#endif  
   
   ////////////////////// clock /////////////////////
 
