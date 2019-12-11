@@ -1156,7 +1156,7 @@ void loop() {
 
       //If event.light <= 0 lux the sensor is probably saturated
       //and no reliable data could be generated!
-      
+
       sensors_event_t event;
       tsl.getEvent(&event);
 
@@ -1164,11 +1164,6 @@ void loop() {
       if(event.light > 0) {
         lux = event.light;
         tsl.getLuminosity(&bb_lum, &ir_lum);
-      }
-      else {
-        lux = 0;
-        bb_lum = 0;
-        ir_lum = 0;
       }
     }
 
