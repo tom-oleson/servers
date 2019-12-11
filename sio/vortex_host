@@ -1,5 +1,5 @@
 #!/bin/bash
 
 # echo arduino001 and arduino002 serial to vortex
-sioecho -c tom-thinkpad-t4:54000 /dev/ttyACM0 /dev/ttyACM1
+sioecho -c tom-thinkpad-t4:54000 /dev/ttyACM0 /dev/ttyACM2
 

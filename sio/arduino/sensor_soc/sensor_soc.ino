@@ -1154,13 +1154,22 @@ void loop() {
 
     if (tsl_found) {
 
-      //If event.light = 0 lux the sensor is probably saturated
+      //If event.light <= 0 lux the sensor is probably saturated
       //and no reliable data could be generated!
+      
       sensors_event_t event;
       tsl.getEvent(&event);
-      lux = event.light;
 
-      tsl.getLuminosity(&bb_lum, &ir_lum);
+      // event.light is a float
+      if(event.light > 0) {
+        lux = event.light;
+        tsl.getLuminosity(&bb_lum, &ir_lum);
+      }
+      else {
+        lux = 0;
+        bb_lum = 0;
+        ir_lum = 0;
+      }
     }
 
     if(soil_found) {
