@@ -56,6 +56,8 @@ char mac_address[18] = "00:00:00:00:00:00";
 char device_name[20] = "";
 
 int soil_pin = 0;
+int pir_pin = 3;
+
 Adafruit_SHT31 sht31 = Adafruit_SHT31();
 Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
 
@@ -91,6 +93,7 @@ uint16_t lux = 0;
 uint16_t bb_lum = 0;
 uint16_t ir_lum = 0;;
 int soil_moisture = 0;
+int motion_value = 0;
 float ds_temperature = 0;
 
 volatile int interval = 10;   // output interval (seconds)
@@ -98,6 +101,8 @@ volatile int interval = 10;   // output interval (seconds)
 bool sht31_found = false;
 bool tsl_found = false;
 volatile bool soil_found = false;
+volatile bool pir_found = false;
+
 
 volatile bool hold_conn_checks = false;
 void evaluate(String &str, bool safe_source);
@@ -715,6 +720,7 @@ void echo_sensors() {
   x_print("bb_lum: "); x_println(bb_lum);
   x_print("ir_lum: "); x_println(ir_lum);
   x_print("soil: "); x_println(soil_moisture);
+  x_print("motion: "); x_println(motion_value);
   x_print("ds_temp: "); x_println(ds_temperature);
 #endif  
   
@@ -728,6 +734,7 @@ void echo_sensors() {
   snprintf(buf, sizeof(buf), "bb_lum: %u", bb_lum); log_info(buf);
   snprintf(buf, sizeof(buf), "ir_lum: %u", ir_lum); log_info(buf);
   snprintf(buf, sizeof(buf), "soil: %d", soil_moisture); log_info(buf);
+  snprintf(buf, sizeof(buf), "motion: %d", motion_value); log_info(buf);
   snprintf(buf, sizeof(buf), "ds_temp: %f", ds_temperature); log_info(buf);
 }
 
@@ -735,6 +742,13 @@ void echo_sensors() {
 
 void init_soil() {
   soil_found = false;
+}
+
+///////////////////////////// SOIL ///////////////////////////////////
+
+void init_pir() {
+  pinMode(pir_pin, INPUT);
+  pir_found = false;
 }
 
 ////////////////////////// DS18B20 ///////////////////////////////////
@@ -864,6 +878,7 @@ void setup() {
 #endif
 
   init_soil();
+  init_pir();
   init_sht31();
   init_tsl2561();
 
@@ -1060,6 +1075,11 @@ void evaluate(String &str, bool safe_source) {
     soil_found = true;
     log_info(str.c_str());
   }
+  else if (str[0] == '+' && str[1] == 'D' && str[2] == '7') {
+    // +D7
+    pir_found = true;
+    log_info(str.c_str());
+  }
 }
 
 // split input string on '\n' because client.readStringUntil('\n') is
@@ -1147,6 +1167,10 @@ void loop() {
       soil_moisture = map(analogRead(soil_pin), 0, 3505, 100, 0);
     }
 
+    if(pir_found) {
+      motion_value = digitalRead(pir_pin);
+    }
+
 #ifdef DS18B20
     if(ds18b20_found) {
 
@@ -1227,6 +1251,15 @@ void loop() {
 
       con_print(F(JS("soil")":"));
       con_print(soil_moisture);
+      append = true;
+    }
+
+    if (pir_found) {
+
+      if (append) output_field_seperator();
+
+      con_print(F(JS("motion")":"));
+      con_print(motion_value);
       append = true;
     }
 
